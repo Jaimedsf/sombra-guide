@@ -122,7 +122,7 @@ Quando o prédio for mapeado no OSM, apague a entrada do arquivo. Se ficar, ele 
 
 ## Segurança e qualidade
 
-- **CodeQL**: análise estática do JavaScript e dos workflows a cada push e toda semana, com o conjunto estendido de regras
+- **CodeQL** (`.github/workflows/codeql.yml`): análise estática do JavaScript e dos workflows a cada push, PR e toda semana, com as regras de segurança estendidas e as de qualidade de código
 - **Dependabot**: alertas de vulnerabilidade, PRs automáticos de correção e atualização semanal das dependências npm e das GitHub Actions
 - **Secret scanning** com bloqueio no push: impede subir chaves e tokens por engano
 - **OpenSSF Scorecard**: nota de segurança da cadeia de suprimentos, recalculada toda semana (selo acima)
