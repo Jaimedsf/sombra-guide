@@ -3,10 +3,13 @@
 [![Deploy](https://github.com/Jaimedsf/sombra-guide/actions/workflows/deploy.yml/badge.svg)](https://github.com/Jaimedsf/sombra-guide/actions/workflows/deploy.yml)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/Jaimedsf/sombra-guide/badge)](https://scorecard.dev/viewer/?uri=github.com/Jaimedsf/sombra-guide)
 [![Licença MIT](https://img.shields.io/badge/licen%C3%A7a-MIT-blue)](LICENSE)
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/14998/badge)](https://www.bestpractices.dev/projects/14998)
 
 Mapa 3D interativo de Fortaleza (CE) que mostra **onde está o sol** e **a sombra que cada prédio faz**, agora ou em qualquer data e hora do ano.
 
 **Acesse:** https://jaimedsf.github.io/sombra-guide/
+
+> **English:** Sombra Guide is an interactive 3D map of Fortaleza, Brazil. It shows where the sun is and the shadow every building casts, for now or for any date and time. It uses OpenStreetMap buildings, MapLibre GL, a three.js shadow layer and SunCalc. The UI is in Portuguese. Code, comments and commits are in English, and issues and pull requests are welcome in either language. See [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md).
 
 ![Sombras dos prédios do Meireles às 16h30 de 21 de dezembro](docs/screenshot.png)
 
@@ -131,6 +134,10 @@ Quando o prédio for mapeado no OSM, apague a entrada do arquivo. Se ficar, ele 
 - Actions fixadas por SHA e token do Actions somente leitura por padrão
 - A `main` não aceita force push nem pode ser apagada
 - Vulnerabilidades devem ser relatadas em privado, conforme o [SECURITY.md](SECURITY.md)
+
+## Como contribuir
+
+Bugs e sugestões vão nas [issues](https://github.com/Jaimedsf/sombra-guide/issues), e código entra por pull request. O passo a passo e a política de testes estão no [CONTRIBUTING.md](CONTRIBUTING.md). As mudanças de cada versão ficam no [CHANGELOG.md](CHANGELOG.md).
 
 ## Licença
 
