@@ -1,0 +1,78 @@
+{
+  "type": "FeatureCollection",
+  "description": "Buildings missing from OpenStreetMap. Remove an entry once OSM has it, or it will be drawn twice.",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Estilo Passaré · Torre 1",
+        "render_height": 35,
+        "building:levels": 12,
+        "source": "footprint traced on Esri World Imagery (2026-09-28); towers parallel and aligned, 33 m apart; levels from developer spec sheet (ground + 11)"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -38.5331884,
+              -3.8145009
+            ],
+            [
+              -38.5331204,
+              -3.8144058
+            ],
+            [
+              -38.5334136,
+              -3.8141971
+            ],
+            [
+              -38.5334816,
+              -3.8142922
+            ],
+            [
+              -38.5331884,
+              -3.8145009
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Estilo Passaré · Torre 2",
+        "render_height": 35,
+        "building:levels": 12,
+        "source": "footprint traced on Esri World Imagery (2026-09-28); towers parallel and aligned, 33 m apart; levels from developer spec sheet (ground + 11)"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -38.5333609,
+              -3.8147422
+            ],
+            [
+              -38.533293,
+              -3.8146471
+            ],
+            [
+              -38.5335861,
+              -3.8144385
+            ],
+            [
+              -38.5336541,
+              -3.8145335
+            ],
+            [
+              -38.5333609,
+              -3.8147422
+            ]
+          ]
+        ]
+      }
+    }
+  ]
+}

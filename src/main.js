@@ -3,6 +3,7 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 // MapLibre 6 loads its worker as a separate module; let Vite bundle it and hand over the URL
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 import { createCityLayer } from './city3d.js';
+import extraBuildings from './extra-buildings.json';
 import { getPosition, getTimes } from 'suncalc';
 import { localNow, toUtc, toLocalMin } from './time.js';
 import './style.css';
@@ -52,7 +53,7 @@ const map = new maplibregl.Map({
 });
 map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right');
 // three.js draws the buildings (with real shadows) instead of the style's extrusions
-const city = createCityLayer(map);
+const city = createCityLayer(map, { extra: extraBuildings.features });
 map.on('load', () => {
   if (map.getLayer('building-3d')) map.removeLayer('building-3d');
   // keep the flat 'building' layer but invisible: MapLibre only keeps a source layer's
@@ -104,11 +105,16 @@ function drawCompass(pos, times, [lng, lat]) {
 }
 
 // ---------- UI ----------
+// the hour slider only spans daylight for the chosen date (and map center)
+let dayRange = [0, 1439];
 function render() {
   const { lng, lat } = map.getCenter();
+  const times = getTimes(toUtc(state.y, state.m, state.d, 720), lat, lng);
+  dayRange = [Math.ceil(toLocalMin(times.sunrise)), Math.floor(toLocalMin(times.sunset))];
+  // live mode keeps the real clock, even at night; simulated moments stay within daylight
+  if (!state.live) state.min = Math.min(dayRange[1], Math.max(dayRange[0], state.min));
   const date = toUtc(state.y, state.m, state.d, state.min);
   const pos = getPosition(date, lat, lng);
-  const times = getTimes(toUtc(state.y, state.m, state.d, 720), lat, lng);
   const noon = getPosition(times.solarNoon, lat, lng);
   applySun(pos);
 
@@ -118,7 +124,9 @@ function render() {
   $('date-label').textContent = `${state.d} ${MONTHS[state.m - 1]} ${state.y}`;
   $('sun-line').textContent = pos.altitude > 0
     ? `Sol a ${pos.altitude.toFixed(0)}° de altura, no ${dirName(pos.azimuth)} (${pos.azimuth.toFixed(0)}°)`
-    : pos.altitude > -6 ? 'Crepúsculo · sol abaixo do horizonte' : 'Noite · sem sol';
+    // official sunrise/sunset is when the sun's upper edge touches the horizon (~ -0.83°)
+    : pos.altitude > -1 ? `Sol no horizonte · ${state.min < 720 ? 'nascendo' : 'se pondo'} no ${dirName(pos.azimuth)}`
+      : pos.altitude > -6 ? 'Crepúsculo · sol abaixo do horizonte' : 'Noite · sem sol';
   $('f-rise').textContent = fmtMin(toLocalMin(times.sunrise));
   $('f-set').textContent = fmtMin(toLocalMin(times.sunset));
   $('f-noon').textContent = fmtMin(toLocalMin(times.solarNoon));
@@ -130,10 +138,16 @@ function render() {
     $('shadow-note').textContent = `Um prédio de 10 m faz sombra de ${len < 100 ? len.toFixed(1).replace('.', ',') : '100+'} m para o ${dirName(pos.azimuth + 180)}.`
       + (noon.altitude > 86 ? ' Perto do meio-dia de hoje o sol passa quase a pino.' : '');
   } else {
-    $('shadow-note').textContent = `Sem sombra do sol agora. Próximo nascer: ${fmtMin(toLocalMin(times.sunrise))}.`;
+    $('shadow-note').textContent = pos.altitude > -1
+      ? 'Sol rente ao horizonte: as sombras ficam longas demais para medir.'
+      : `Sem sombra do sol agora. Próximo nascer: ${fmtMin(toLocalMin(times.sunrise))}.`;
   }
 
+  $('time').min = dayRange[0];
+  $('time').max = dayRange[1];
   $('time').value = Math.floor(state.min);
+  $('t-rise').textContent = `nascer ${fmtMin(dayRange[0])}`;
+  $('t-set').textContent = `pôr ${fmtMin(dayRange[1])}`;
   $('doy').value = dayOfYear(state);
   $('date').value = `${state.y}-${pad(state.m)}-${pad(state.d)}`;
   $('play-day').setAttribute('aria-pressed', state.playing === 'day');
@@ -265,7 +279,7 @@ function frame(ts) {
   last = ts;
   if (state.playing === 'day') {
     state.min += dt * 60;
-    if (state.min >= 1439) state.min = 0;
+    if (state.min >= dayRange[1]) state.min = dayRange[0];
   } else {
     state._doyF = ((state._doyF ?? dayOfYear(state)) + dt * 30) % 365;
     setDayOfYear(Math.floor(state._doyF));

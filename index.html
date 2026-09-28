@@ -56,7 +56,10 @@
 
     <div class="field">
       <label for="time">Hora</label>
-      <input type="range" id="time" min="0" max="1439" step="5">
+      <div class="range">
+        <input type="range" id="time" min="0" max="1439" step="1">
+        <div class="ends"><span id="t-rise"></span><span id="t-set"></span></div>
+      </div>
     </div>
     <div class="field">
       <label for="doy">Dia do ano</label>

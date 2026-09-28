@@ -16,7 +16,7 @@ const mercY = (lat) => (180 - (180 / Math.PI) * Math.log(Math.tan(Math.PI / 4 + 
  * with three.js and lets a directional "sun" cast real shadows on them and on the ground.
  * Scene units are meters around `origin`: x east, y north, z up.
  */
-export function createCityLayer(map, { sourceId = 'openmaptiles', sourceLayer = 'building' } = {}) {
+export function createCityLayer(map, { sourceId = 'openmaptiles', sourceLayer = 'building', extra = [] } = {}) {
   let renderer, scene, camera, sun, hemi, ground, shadowMat, buildings;
   let origin = null; // { x, y, scale } in mercator units
   let dirty = true;
@@ -39,7 +39,8 @@ export function createCityLayer(map, { sourceId = 'openmaptiles', sourceLayer = 
     // buildings; mixing them doubles roofs and casts bogus shadows. `_z` is MapLibre's
     // (internal) tile zoom on each feature.
     const zMax = all.reduce((z, f) => Math.max(z, f._z ?? 0), 0);
-    const features = all.filter((f) => (f._z ?? 0) === zMax);
+    // `extra`: GeoJSON buildings not yet in OSM, drawn the same way
+    const features = all.filter((f) => (f._z ?? 0) === zMax).concat(extra);
 
     for (const f of features) {
       const top = f.properties.render_height || DEFAULT_HEIGHT_M;

@@ -88,6 +88,7 @@ index.html          interface (painel, busca, controles de câmera)
 src/main.js         mapa, estado de data e hora, painel, busca, animações
 src/city3d.js       camada three.js: prédios, luz solar e sombras
 src/time.js         conversões para o horário de Fortaleza
+src/extra-buildings.json  prédios que ainda não estão no OSM (GeoJSON com render_height)
 src/style.css       estilos
 check.mjs           teste rápido (npm run check)
 .github/workflows/  deploy automático no GitHub Pages
@@ -98,6 +99,12 @@ check.mjs           teste rápido (npm run check)
 O site é estático e está hospedado de graça no **GitHub Pages**. O workflow `.github/workflows/deploy.yml` roda o teste, gera o build e publica a cada push na `main`.
 
 O `dist/` também funciona em outros hosts estáticos gratuitos, como Cloudflare Pages, Netlify ou Vercel. Nesses, o comando de build é `npm run build` e a pasta publicada é `dist`.
+
+## Prédios que faltam no OSM
+
+Prédios novos que ainda não estão no OpenStreetMap podem entrar em `src/extra-buildings.json`. Cada um é um polígono GeoJSON com `render_height` em metros e é desenhado e sombreado como os demais. Hoje o arquivo tem as duas torres do Estilo Passaré (Av. dos Paroaras, 1200), com térreo + 11 andares, cerca de 35 m. O contorno foi traçado sobre a imagem de satélite da Esri.
+
+Quando o prédio for mapeado no OSM, apague a entrada do arquivo. Se ficar, ele é desenhado duas vezes. O melhor caminho é sempre mapear no próprio OSM, porque aí o prédio aparece para todo mundo.
 
 ## Limitações
 
