@@ -1,0 +1,27 @@
+{
+  "name": "sombra-guide",
+  "version": "1.0.0",
+  "description": "3D map of Fortaleza (CE) showing sun position and building shadows for any date and time",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "check": "node check.mjs"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "maplibre-gl": "^6.11.2",
+    "suncalc": "^2.0.2",
+    "three": "^0.186.1"
+  },
+  "devDependencies": {
+    "vite": "^8.3.1"
+  },
+  "type": "module",
+  "homepage": "https://jaimedsf.github.io/sombra-guide/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Jaimedsf/sombra-guide.git"
+  },
+  "private": "true"
+}

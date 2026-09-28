@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Sombra Guide · Fortaleza</title>
+  <meta name="description" content="Mapa 3D de Fortaleza com a posição do sol e a sombra dos prédios em qualquer data e hora.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='21' cy='11' r='7' fill='%23f2a51a'/%3E%3Crect x='5' y='12' width='8' height='16' fill='%231b1a24'/%3E%3Cpath d='M13 28 L27 28 L13 20 Z' fill='%232b3160' opacity='.5'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
+</head>
+<body>
+  <div id="map" aria-label="Mapa 3D de Fortaleza com sombras dos prédios"></div>
+
+  <div class="cam" role="group" aria-label="Câmera">
+    <button data-cam="rot-left" title="Girar para a esquerda" aria-label="Girar para a esquerda">⟲</button>
+    <button data-cam="rot-right" title="Girar para a direita" aria-label="Girar para a direita">⟳</button>
+    <button data-cam="tilt-up" title="Inclinar mais (3D)" aria-label="Inclinar mais">▲</button>
+    <button data-cam="tilt-down" title="Inclinar menos" aria-label="Inclinar menos">▼</button>
+    <button data-cam="top" class="wide" title="Vista de cima, norte para cima">De cima</button>
+    <button data-cam="3d" class="wide" title="Vista 3D inclinada">3D</button>
+    <p class="cam-hint">Arraste para mover · botão direito ou Ctrl + arrastar para girar e inclinar · roda ou pinça para zoom</p>
+  </div>
+
+  <aside class="panel" id="panel">
+    <header class="head">
+      <div>
+        <h1>Sombra Guide</h1>
+        <p class="sub">Fortaleza · sol e sombra dos prédios</p>
+      </div>
+    </header>
+
+    <form class="search" id="search" role="search">
+      <input type="search" id="q" placeholder="Digite um endereço em Fortaleza" autocomplete="street-address" aria-label="Endereço">
+      <button class="btn" type="submit">Buscar</button>
+    </form>
+    <ul class="results" id="results" hidden></ul>
+
+    <section class="readout">
+      <svg id="compass" viewBox="-60 -60 120 120" role="img" aria-label="Posição do sol no céu"></svg>
+      <div class="big">
+        <div class="clock"><span id="clk">--:--</span><span id="mode" class="mode"></span></div>
+        <div id="date-label" class="date-label"></div>
+        <div id="sun-line" class="sun-line"></div>
+      </div>
+    </section>
+
+    <dl class="facts">
+      <div><dt>Nascer</dt><dd id="f-rise">--</dd></div>
+      <div><dt>Pôr</dt><dd id="f-set">--</dd></div>
+      <div><dt>Meio-dia solar</dt><dd id="f-noon">--</dd></div>
+      <div><dt>Altura máx.</dt><dd id="f-noonalt">--</dd></div>
+    </dl>
+    <p class="shadow-note" id="shadow-note"></p>
+
+    <div class="field">
+      <label for="time">Hora</label>
+      <input type="range" id="time" min="0" max="1439" step="5">
+    </div>
+    <div class="field">
+      <label for="doy">Dia do ano</label>
+      <input type="range" id="doy" min="0" max="364" step="1">
+    </div>
+
+    <div class="row">
+      <input type="date" id="date" aria-label="Data">
+      <button id="now" class="btn">Agora</button>
+      <button id="play-day" class="btn primary" aria-pressed="false">▶ Dia</button>
+      <button id="play-year" class="btn" aria-pressed="false">▶ Ano</button>
+    </div>
+    <div class="row presets" role="group" aria-label="Datas marcantes">
+      <button class="chip" data-md="03-11">Sol a pino · mar</button>
+      <button class="chip" data-md="03-20">Equinócio · mar</button>
+      <button class="chip" data-md="06-21">Solstício · jun</button>
+      <button class="chip" data-md="09-22">Equinócio · set</button>
+      <button class="chip" data-md="10-02">Sol a pino · out</button>
+      <button class="chip" data-md="12-21">Solstício · dez</button>
+    </div>
+
+    <p class="credit">Prédios e mapa: © colaboradores do OpenStreetMap, tiles OpenFreeMap. Alturas do OSM; sem altura = 3 m.</p>
+  </aside>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

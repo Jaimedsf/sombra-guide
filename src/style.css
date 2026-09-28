@@ -1,0 +1,141 @@
+:root {
+  --panel: rgb(252 250 246 / 0.94);
+  --ink: #1b1a24;
+  --muted: #676473;
+  --line: #e4dfd6;
+  --chip: #efebe4;
+  --sun: #f2a51a;
+  --sun-deep: #c9770a;
+  --shadow: #2b3160;
+  --sky: #eef1f7;
+  --sans: "Instrument Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --panel: rgb(24 23 32 / 0.92);
+    --ink: #efedf5;
+    --muted: #a3a0b0;
+    --line: #34323f;
+    --chip: #2c2a37;
+    --shadow: #9aa3ff;
+    --sky: #22212d;
+    color-scheme: dark;
+  }
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; height: 100%; }
+body { font: 14px/1.45 var(--sans); color: var(--ink); background: #dcd8cf; overflow: hidden; }
+#map { position: absolute; inset: 0; }
+button, input { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--sun-deep); outline-offset: 2px; }
+
+.panel {
+  position: absolute;
+  z-index: 2;
+  left: 16px;
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  width: min(400px, calc(100% - 32px));
+  max-height: calc(100% - 32px);
+  overflow: auto;
+  display: grid;
+  gap: 12px;
+  padding: 16px 18px;
+  background: var(--panel);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: 0 12px 40px rgb(20 18 40 / 0.18);
+}
+
+.head { display: flex; justify-content: space-between; align-items: start; gap: 12px; }
+h1 { margin: 0; font-size: 20px; font-weight: 700; letter-spacing: -0.01em; }
+.sub { margin: 2px 0 0; color: var(--muted); font-size: 12.5px; }
+
+.search { display: flex; gap: 8px; }
+.search input {
+  flex: 1; min-width: 0; border: 1px solid var(--line); background: var(--chip);
+  border-radius: 8px; padding: 7px 10px;
+}
+.results { list-style: none; margin: -4px 0 0; padding: 0; display: grid; gap: 2px; max-height: 180px; overflow: auto; }
+.results button {
+  width: 100%; text-align: left; border: 0; background: transparent; border-radius: 6px;
+  padding: 6px 8px; font-size: 13px; cursor: pointer;
+}
+.results button:hover { background: var(--chip); }
+.results .msg { color: var(--muted); font-size: 13px; padding: 4px 8px; }
+.readout { display: grid; grid-template-columns: 112px 1fr; gap: 14px; align-items: center; }
+#compass { width: 112px; height: 112px; overflow: visible; }
+#compass .dome { fill: var(--sky); stroke: var(--line); }
+#compass .ring { fill: none; stroke: var(--line); stroke-dasharray: 2 3; }
+#compass .path { fill: none; stroke: var(--sun); stroke-width: 1.6; stroke-dasharray: 3 2.5; opacity: 0.8; }
+#compass .sun { fill: var(--sun); stroke: #fff; stroke-width: 1.5; }
+#compass .shadow { stroke: var(--shadow); stroke-width: 4; stroke-linecap: round; opacity: 0.75; }
+#compass .pole { fill: var(--ink); }
+#compass .cardinal { font: 700 9px var(--mono); fill: var(--muted); text-anchor: middle; }
+#compass .cardinal.n { fill: var(--sun-deep); }
+
+.clock { display: flex; align-items: baseline; gap: 10px; }
+#clk { font: 700 40px/1 var(--mono); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.mode {
+  font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;
+  padding: 3px 7px; border-radius: 999px; background: var(--chip); color: var(--muted);
+}
+.mode[data-live="true"] { background: color-mix(in srgb, var(--sun) 22%, transparent); color: var(--sun-deep); }
+.date-label { font-weight: 600; margin-top: 4px; }
+.sun-line { color: var(--muted); font-size: 13px; }
+
+.facts { margin: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.facts div { background: var(--chip); border-radius: 8px; padding: 6px 8px; }
+.facts dt { font-size: 11px; color: var(--muted); }
+.facts dd { margin: 0; font: 700 13px var(--mono); font-variant-numeric: tabular-nums; }
+.shadow-note { margin: 0; font-size: 13.5px; padding-left: 10px; border-left: 3px solid var(--shadow); }
+
+.field { display: grid; grid-template-columns: 76px 1fr; align-items: center; gap: 10px; }
+.field label { font-size: 12.5px; color: var(--muted); font-weight: 600; }
+input[type="range"] { width: 100%; accent-color: var(--sun-deep); }
+
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+input[type="date"] {
+  border: 1px solid var(--line); background: var(--chip); border-radius: 8px; padding: 6px 8px; flex: 1 1 110px; min-width: 0;
+}
+.btn {
+  border: 1px solid var(--line); background: var(--chip); border-radius: 8px; padding: 7px 10px;
+  font-weight: 600; cursor: pointer;
+}
+.btn.primary, .btn[aria-pressed="true"] { background: var(--ink); color: var(--panel); border-color: var(--ink); }
+.chip {
+  border: 1px solid var(--line); background: transparent; border-radius: 999px; padding: 4px 10px;
+  font-size: 12.5px; cursor: pointer;
+}
+.chip:hover, .btn:hover { border-color: var(--sun-deep); }
+.credit { margin: 0; font-size: 11px; color: var(--muted); }
+
+.cam {
+  position: absolute; z-index: 2; right: 10px; bottom: calc(34px + env(safe-area-inset-bottom, 0px));
+  display: grid; grid-template-columns: repeat(2, 40px); gap: 6px; justify-items: stretch;
+}
+.cam button {
+  height: 40px; border: 1px solid var(--line); background: var(--panel); border-radius: 8px;
+  font-size: 17px; font-weight: 700; cursor: pointer; box-shadow: 0 4px 14px rgb(20 18 40 / 0.14);
+}
+.cam button.wide { grid-column: span 2; font-size: 13px; }
+.cam button:hover { border-color: var(--sun-deep); }
+.cam-hint {
+  grid-column: span 2; margin: 0; width: 86px; font-size: 10.5px; line-height: 1.3; color: var(--muted);
+  background: var(--panel); border-radius: 8px; padding: 6px;
+}
+
+@media (max-width: 560px) {
+  .panel { left: 8px; right: 8px; width: auto; bottom: calc(8px + env(safe-area-inset-bottom, 0px)); max-height: 52%; padding: 12px 14px; gap: 10px; }
+  .readout { grid-template-columns: 84px 1fr; }
+  #compass { width: 84px; height: 84px; }
+  #clk { font-size: 32px; }
+  .facts { grid-template-columns: repeat(2, 1fr); }
+  .cam { top: 150px; bottom: auto; }
+  .cam-hint { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
