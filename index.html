@@ -18,7 +18,7 @@
     <button data-cam="rot-right" title="Girar para a direita" aria-label="Girar para a direita">⟳</button>
     <button data-cam="tilt-up" title="Inclinar mais (3D)" aria-label="Inclinar mais">▲</button>
     <button data-cam="tilt-down" title="Inclinar menos" aria-label="Inclinar menos">▼</button>
-    <button data-cam="top" class="wide" title="Vista de cima, norte para cima">De cima</button>
+    <button data-cam="top" class="wide" title="Vista de cima, norte para cima" aria-label="Vista de cima">2D</button>
     <button data-cam="3d" class="wide" title="Vista 3D inclinada">3D</button>
     <p class="cam-hint">Arraste para mover · botão direito ou Ctrl + arrastar para girar e inclinar · roda ou pinça para zoom</p>
   </div>
@@ -29,10 +29,11 @@
         <h1>Sombra Guide</h1>
         <p class="sub">Fortaleza · sol e sombra dos prédios</p>
       </div>
+      <button class="sheet-toggle" id="sheet-toggle" type="button" aria-expanded="false" aria-controls="panel-more">Mais</button>
     </header>
 
     <form class="search" id="search" role="search">
-      <input type="search" id="q" placeholder="Digite um endereço em Fortaleza" autocomplete="street-address" aria-label="Endereço">
+      <input type="search" id="q" placeholder="Digite um endereço em Fortaleza" autocomplete="street-address" enterkeyhint="search" aria-label="Endereço">
       <button class="btn" type="submit">Buscar</button>
     </form>
     <ul class="results" id="results" hidden></ul>
@@ -46,14 +47,6 @@
       </div>
     </section>
 
-    <dl class="facts">
-      <div><dt>Nascer</dt><dd id="f-rise">--</dd></div>
-      <div><dt>Pôr</dt><dd id="f-set">--</dd></div>
-      <div><dt>Meio-dia solar</dt><dd id="f-noon">--</dd></div>
-      <div><dt>Altura máx.</dt><dd id="f-noonalt">--</dd></div>
-    </dl>
-    <p class="shadow-note" id="shadow-note"></p>
-
     <div class="field">
       <label for="time">Hora</label>
       <div class="range">
@@ -61,27 +54,39 @@
         <div class="ends"><span id="t-rise"></span><span id="t-set"></span></div>
       </div>
     </div>
-    <div class="field">
-      <label for="doy">Dia do ano</label>
-      <input type="range" id="doy" min="0" max="364" step="1">
-    </div>
 
-    <div class="row">
-      <input type="date" id="date" aria-label="Data">
-      <button id="now" class="btn">Agora</button>
-      <button id="play-day" class="btn primary" aria-pressed="false">▶ Dia</button>
-      <button id="play-year" class="btn" aria-pressed="false">▶ Ano</button>
-    </div>
-    <div class="row presets" role="group" aria-label="Datas marcantes">
-      <button class="chip" data-md="03-11">Sol a pino · mar</button>
-      <button class="chip" data-md="03-20">Equinócio · mar</button>
-      <button class="chip" data-md="06-21">Solstício · jun</button>
-      <button class="chip" data-md="09-22">Equinócio · set</button>
-      <button class="chip" data-md="10-02">Sol a pino · out</button>
-      <button class="chip" data-md="12-21">Solstício · dez</button>
-    </div>
+    <!-- always open on desktop; behind the "Mais" toggle on phones -->
+    <div class="more" id="panel-more">
+      <dl class="facts">
+        <div><dt>Nascer</dt><dd id="f-rise">--</dd></div>
+        <div><dt>Pôr</dt><dd id="f-set">--</dd></div>
+        <div><dt>Meio-dia solar</dt><dd id="f-noon">--</dd></div>
+        <div><dt>Altura máx.</dt><dd id="f-noonalt">--</dd></div>
+      </dl>
+      <p class="shadow-note" id="shadow-note"></p>
 
-    <p class="credit">Prédios e mapa: © colaboradores do OpenStreetMap, tiles OpenFreeMap. Alturas do OSM; sem altura = 3 m. Busca de endereços: Esri e Nominatim.</p>
+      <div class="field">
+        <label for="doy">Dia do ano</label>
+        <input type="range" id="doy" min="0" max="364" step="1">
+      </div>
+
+      <div class="row">
+        <input type="date" id="date" aria-label="Data">
+        <button id="now" class="btn">Agora</button>
+        <button id="play-day" class="btn primary" aria-pressed="false">▶ Dia</button>
+        <button id="play-year" class="btn" aria-pressed="false">▶ Ano</button>
+      </div>
+      <div class="row presets" role="group" aria-label="Datas marcantes">
+        <button class="chip" data-md="03-11">Sol a pino · mar</button>
+        <button class="chip" data-md="03-20">Equinócio · mar</button>
+        <button class="chip" data-md="06-21">Solstício · jun</button>
+        <button class="chip" data-md="09-22">Equinócio · set</button>
+        <button class="chip" data-md="10-02">Sol a pino · out</button>
+        <button class="chip" data-md="12-21">Solstício · dez</button>
+      </div>
+
+      <p class="credit">Prédios e mapa: © colaboradores do OpenStreetMap, tiles OpenFreeMap. Alturas do OSM; sem altura = 3 m. Busca de endereços: Esri e Nominatim.</p>
+    </div>
   </aside>
 
   <script type="module" src="/src/main.js"></script>

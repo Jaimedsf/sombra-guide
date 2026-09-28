@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 
-// Buildings are rebuilt around the map center within this radius (meters).
-// The sun's shadow camera covers the same square, so it also sets shadow resolution.
+// Defaults; phones get a lighter profile from main.js.
+// Buildings are rebuilt around the map center within `radius` meters. The sun's
+// shadow camera covers the same square, so radius / shadowMapSize is meters per texel.
 const RADIUS = 1200;
 const SHADOW_MAP = 4096;
 const DEFAULT_HEIGHT_M = 3;
@@ -16,7 +17,9 @@ const mercY = (lat) => (180 - (180 / Math.PI) * Math.log(Math.tan(Math.PI / 4 + 
  * with three.js and lets a directional "sun" cast real shadows on them and on the ground.
  * Scene units are meters around `origin`: x east, y north, z up.
  */
-export function createCityLayer(map, { sourceId = 'openmaptiles', sourceLayer = 'building', extra = [] } = {}) {
+export function createCityLayer(map, {
+  sourceId = 'openmaptiles', sourceLayer = 'building', extra = [], radius = RADIUS, shadowMapSize = SHADOW_MAP,
+} = {}) {
   let renderer, scene, camera, sun, hemi, ground, shadowMat, buildings;
   let origin = null; // { x, y, scale } in mercator units
   let dirty = true;
@@ -33,7 +36,6 @@ export function createCityLayer(map, { sourceId = 'openmaptiles', sourceLayer = 
     origin = { x, y, scale: 1 / (40075016.686 * Math.cos(c.lat * D2R)) };
 
     const pos = [], nrm = [];
-    const pushTri = (a, b, c2, n) => { pos.push(...a, ...b, ...c2); nrm.push(...n, ...n, ...n); };
     const all = map.querySourceFeatures(sourceId, { sourceLayer });
     // Parent tiles (lower zoom) stay loaded too and carry simplified copies of the same
     // buildings; mixing them doubles roofs and casts bogus shadows. `_z` is MapLibre's
@@ -50,13 +52,15 @@ export function createCityLayer(map, { sourceId = 'openmaptiles', sourceLayer = 
         : f.geometry.type === 'MultiPolygon' ? f.geometry.coordinates : [];
 
       for (const poly of polys) {
+        // cheap reject on the first vertex before converting every ring
+        const first = poly[0]?.[0];
+        if (!first || Math.hypot(...toLocal(first[0], first[1])) > radius) continue;
         const rings = poly.map((ring) => {
           const pts = ring.map(([lng, lat]) => toLocal(lng, lat));
           if (pts.length > 1 && pts[0][0] === pts.at(-1)[0] && pts[0][1] === pts.at(-1)[1]) pts.pop();
           return pts;
         });
-        const [ox, oy] = rings[0][0] || [Infinity, Infinity];
-        if (rings[0].length < 3 || Math.hypot(ox, oy) > RADIUS) continue;
+        if (rings[0].length < 3) continue;
 
         // outer ring counter-clockwise, holes clockwise, so wall normals point outward
         rings.forEach((r, i) => {
@@ -68,9 +72,9 @@ export function createCityLayer(map, { sourceId = 'openmaptiles', sourceLayer = 
           for (let i = 0; i < r.length; i++) {
             const [ax, ay] = r[i], [bx, by] = r[(i + 1) % r.length];
             const len = Math.hypot(bx - ax, by - ay) || 1;
-            const n = [(by - ay) / len, -(bx - ax) / len, 0];
-            pushTri([ax, ay, base], [bx, by, base], [bx, by, top], n);
-            pushTri([ax, ay, base], [bx, by, top], [ax, ay, top], n);
+            const nx = (by - ay) / len, ny = -(bx - ax) / len;
+            pos.push(ax, ay, base, bx, by, base, bx, by, top, ax, ay, base, bx, by, top, ax, ay, top);
+            nrm.push(nx, ny, 0, nx, ny, 0, nx, ny, 0, nx, ny, 0, nx, ny, 0, nx, ny, 0);
           }
         }
 
@@ -80,8 +84,9 @@ export function createCityLayer(map, { sourceId = 'openmaptiles', sourceLayer = 
         for (const [i, j, k] of THREE.ShapeUtils.triangulateShape(contour, holes)) {
           const a = all[i], b = all[j], c2 = all[k];
           const flip = (b.x - a.x) * (c2.y - a.y) - (b.y - a.y) * (c2.x - a.x) < 0;
-          const tri = flip ? [a, c2, b] : [a, b, c2];
-          pushTri(...tri.map((v) => [v.x, v.y, top]), [0, 0, 1]);
+          const [p, q] = flip ? [c2, b] : [b, c2];
+          pos.push(a.x, a.y, top, p.x, p.y, top, q.x, q.y, top);
+          nrm.push(0, 0, 1, 0, 0, 1, 0, 0, 1);
         }
       }
     }
@@ -115,8 +120,8 @@ export function createCityLayer(map, { sourceId = 'openmaptiles', sourceLayer = 
 
       sun = new THREE.DirectionalLight(0xfff1dc, 2.6);
       sun.castShadow = true;
-      sun.shadow.mapSize.set(SHADOW_MAP, SHADOW_MAP);
-      Object.assign(sun.shadow.camera, { left: -RADIUS, right: RADIUS, top: RADIUS, bottom: -RADIUS, near: 10, far: 6000 });
+      sun.shadow.mapSize.set(shadowMapSize, shadowMapSize);
+      Object.assign(sun.shadow.camera, { left: -radius, right: radius, top: radius, bottom: -radius, near: 10, far: 6000 });
       sun.shadow.bias = -0.0008;
       sun.shadow.normalBias = 1.2;
       scene.add(sun, sun.target);
@@ -132,7 +137,7 @@ export function createCityLayer(map, { sourceId = 'openmaptiles', sourceLayer = 
 
       // invisible ground that only shows the shadows falling on it
       shadowMat = new THREE.ShadowMaterial({ color: 0x141a3a, opacity: 0.38 });
-      ground = new THREE.Mesh(new THREE.PlaneGeometry(RADIUS * 6, RADIUS * 6), shadowMat);
+      ground = new THREE.Mesh(new THREE.PlaneGeometry(radius * 6, radius * 6), shadowMat);
       ground.position.z = 0.05;
       ground.receiveShadow = true;
       ground.frustumCulled = false;
@@ -146,7 +151,7 @@ export function createCityLayer(map, { sourceId = 'openmaptiles', sourceLayer = 
         buildings.visible = ground.visible = visible;
         if (!visible) return map.triggerRepaint();
         const c = map.getCenter();
-        const moved = !origin || Math.hypot(...toLocal(c.lng, c.lat)) > RADIUS / 3;
+        const moved = !origin || Math.hypot(...toLocal(c.lng, c.lat)) > radius / 3;
         if (dirty || moved) rebuild();
       };
       map.on('sourcedata', (e) => { if (e.sourceId === sourceId && e.tile) { dirty = true; schedule(); } });

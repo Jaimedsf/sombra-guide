@@ -119,6 +119,8 @@ input[type="date"] {
 }
 .chip:hover, .btn:hover { border-color: var(--sun-deep); }
 .credit { margin: 0; font-size: 11px; color: var(--muted); }
+.more { display: grid; gap: 12px; }
+.sheet-toggle { display: none; }
 
 .cam {
   position: absolute; z-index: 2; right: 10px; bottom: calc(34px + env(safe-area-inset-bottom, 0px));
@@ -135,13 +137,50 @@ input[type="date"] {
   background: var(--panel); border-radius: 8px; padding: 6px;
 }
 
+/* ---------- phones: bottom sheet, compact controls, 44px touch targets ---------- */
 @media (max-width: 560px) {
-  .panel { left: 8px; right: 8px; width: auto; bottom: calc(8px + env(safe-area-inset-bottom, 0px)); max-height: 52%; padding: 12px 14px; gap: 10px; }
-  .readout { grid-template-columns: 84px 1fr; }
-  #compass { width: 84px; height: 84px; }
-  #clk { font-size: 32px; }
+  .panel {
+    left: 0; right: 0; bottom: 0; width: auto; max-height: 78%;
+    padding: 10px 14px calc(12px + env(safe-area-inset-bottom, 0px));
+    gap: 10px; border-radius: 16px 16px 0 0; border-width: 1px 0 0;
+    overscroll-behavior: contain;
+  }
+  .panel:not(.open) .more { display: none; }
+  .head { align-items: center; }
+  h1 { font-size: 17px; }
+  .sub { display: none; }
+  .sheet-toggle {
+    display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 14px;
+    border: 1px solid var(--line); background: var(--chip); border-radius: 999px;
+    font-weight: 600; font-size: 13px; cursor: pointer;
+  }
+  .sheet-toggle::after { content: "▴"; font-size: 12px; }
+  .panel.open .sheet-toggle::after { content: "▾"; }
+
+  /* 16px inputs stop iOS from zooming the page on focus */
+  .search input, input[type="date"] { font-size: 16px; min-height: 44px; }
+  input[type="date"] { flex-basis: 100%; }
+  .row .btn { flex: 1; }
+  .btn { min-height: 44px; padding: 0 14px; }
+  .chip { min-height: 36px; padding: 0 12px; }
+  .results { max-height: 30vh; }
+  .results button { min-height: 44px; }
+
+  .readout { grid-template-columns: 64px 1fr; gap: 12px; }
+  #compass { width: 64px; height: 64px; }
+  #clk { font-size: 30px; }
+  .date-label { margin-top: 2px; font-size: 13px; }
+  .sun-line { font-size: 12.5px; }
   .facts { grid-template-columns: repeat(2, 1fr); }
-  .cam { top: 150px; bottom: auto; }
+  .field { grid-template-columns: 1fr; gap: 4px; }
+  .field label { font-size: 11.5px; }
+  input[type="range"] { height: 40px; }
+
+  /* camera buttons: 3 x 2 grid on the right, zoom by pinch */
+  .cam { top: 64px; bottom: auto; right: 8px; grid-template-columns: repeat(3, 40px); gap: 5px; }
+  .cam button { height: 40px; font-size: 16px; }
+  .cam button.wide { grid-column: span 1; font-size: 11px; }
   .cam-hint { display: none; }
+  .maplibregl-ctrl-zoom-in, .maplibregl-ctrl-zoom-out { display: none !important; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }

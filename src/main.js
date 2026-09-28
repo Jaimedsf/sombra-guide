@@ -40,6 +40,8 @@ Object.assign(state, localNow());
 maplibregl.setWorkerUrl(workerUrl);
 
 // ---------- map ----------
+// phones: fewer pixels and a lighter 3D profile keep panning smooth
+const PHONE = matchMedia('(max-width: 560px), (pointer: coarse)').matches;
 const map = new maplibregl.Map({
   container: 'map',
   style: 'https://tiles.openfreemap.org/styles/liberty',
@@ -50,10 +52,14 @@ const map = new maplibregl.Map({
   maxPitch: 78,
   attributionControl: { compact: true },
   hash: true, // view lives in the URL, so it can be shared
+  pixelRatio: Math.min(devicePixelRatio, 2), // 3x screens cost 2.25x the pixels for little gain
 });
 map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right');
 // three.js draws the buildings (with real shadows) instead of the style's extrusions
-const city = createCityLayer(map, { extra: extraBuildings.features });
+const city = createCityLayer(map, {
+  extra: extraBuildings.features,
+  ...(PHONE && { radius: 700, shadowMapSize: 2048 }), // ~0.7 m shadow texel (desktop ~0.6 m), ~1/3 of the geometry
+});
 map.on('load', () => {
   if (map.getLayer('building-3d')) map.removeLayer('building-3d');
   // keep the flat 'building' layer but invisible: MapLibre only keeps a source layer's
@@ -218,6 +224,7 @@ function goTo(r) {
   marker = new maplibregl.Marker({ color: '#c9770a' }).setLngLat([r.lng, r.lat]).addTo(map);
   map.flyTo({ center: [r.lng, r.lat], zoom: 17.5, pitch: 60, duration: 2200 });
   $('results').hidden = true;
+  $('q').blur(); // closes the phone keyboard so the map is visible
 }
 $('search').addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -257,8 +264,18 @@ $('search').addEventListener('submit', async (e) => {
     list.appendChild(li);
   });
 });
-map.on('moveend', () => render());
-map.on('rotate', () => render());
+// map events can fire every frame; redraw the panel at most once per frame
+let queued = false;
+const renderSoon = () => { if (!queued) { queued = true; requestAnimationFrame(() => { queued = false; render(); }); } };
+map.on('moveend', renderSoon);
+map.on('rotate', renderSoon);
+
+// phones: the panel is a bottom sheet; "Mais" reveals the rest
+$('sheet-toggle').addEventListener('click', () => {
+  const open = $('panel').classList.toggle('open');
+  $('sheet-toggle').setAttribute('aria-expanded', open);
+  $('sheet-toggle').textContent = open ? 'Menos' : 'Mais';
+});
 
 const CAM = {
   'rot-left': () => ({ bearing: map.getBearing() - 30 }),
