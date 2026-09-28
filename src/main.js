@@ -8,8 +8,8 @@ import { localNow, toUtc, toLocalMin } from './time.js';
 import './style.css';
 
 const START = [-38.4965, -3.7262];
-// Fortaleza metro area, used to keep address search local
-const SEARCH_BOX = '-38.70,-3.66,-38.35,-3.92';
+// Fortaleza metro area (xmin,ymin,xmax,ymax), used to keep address search local
+const SEARCH_BOX = '-38.70,-3.92,-38.35,-3.66';
 
 const $ = (id) => document.getElementById(id);
 const pad = (n) => String(n).padStart(2, '0');
@@ -156,13 +156,53 @@ document.querySelectorAll('.presets .chip').forEach((b) => b.addEventListener('c
   const [m, d] = b.dataset.md.split('-').map(Number);
   manual(); Object.assign(state, { m, d }); render();
 }));
-// address search: OpenStreetMap Nominatim, one request per submit (their usage policy)
+// ---------- address search ----------
+// Esri's World Geocoder knows Brazilian house numbers (OSM rarely has them in Fortaleza).
+// Anonymous use is allowed for searches whose results are not stored; Nominatim is the fallback.
+const PRECISION = {
+  PointAddress: 'número exato', Subaddress: 'número exato',
+  StreetAddress: 'número aproximado', StreetAddressExt: 'número aproximado',
+  StreetName: 'só a rua', StreetInt: 'cruzamento', POI: 'local',
+};
+async function searchEsri(q) {
+  const { lng, lat } = map.getCenter();
+  const url = 'https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates?'
+    + new URLSearchParams({
+      f: 'json', singleLine: q, countryCode: 'BRA', langCode: 'pt', maxLocations: '6',
+      outFields: 'Addr_type', searchExtent: SEARCH_BOX, location: `${lng},${lat}`,
+    });
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(res.status);
+  const data = await res.json();
+  if (data.error) throw new Error(data.error.message);
+  const seen = new Set();
+  return data.candidates
+    .filter((c) => c.score >= 75 && !seen.has(c.address) && seen.add(c.address))
+    .map((c) => ({
+      lng: c.location.x, lat: c.location.y, label: c.address,
+      precision: PRECISION[c.attributes.Addr_type] || 'região',
+      exact: /Address$|^Subaddress$/.test(c.attributes.Addr_type) && c.score >= 95,
+    }));
+}
+async function searchNominatim(q) {
+  // west,north,east,south as Nominatim expects
+  const [w, s1, e, n] = SEARCH_BOX.split(',');
+  const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=6&countrycodes=br&accept-language=pt-BR&bounded=1&viewbox=${w},${n},${e},${s1}&q=${encodeURIComponent(q)}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(res.status);
+  return (await res.json()).map((r) => ({
+    lng: +r.lon, lat: +r.lat,
+    label: r.display_name.replace(/, (Região Geográfica|Mesorregião|Microrregião|Região Metropolitana|Região Nordeste)[^,]*/g, '').replace(/, Brasil$/, ''),
+    precision: r.addresstype === 'road' ? 'só a rua' : r.addresstype === 'house' || r.addresstype === 'building' ? 'número exato' : 'local',
+    exact: r.addresstype === 'house' || r.addresstype === 'building',
+  }));
+}
+
 let marker = null;
 function goTo(r) {
-  const lng = +r.lon, lat = +r.lat;
   marker?.remove();
-  marker = new maplibregl.Marker({ color: '#c9770a' }).setLngLat([lng, lat]).addTo(map);
-  map.flyTo({ center: [lng, lat], zoom: 17, pitch: 60, duration: 2200 });
+  marker = new maplibregl.Marker({ color: '#c9770a' }).setLngLat([r.lng, r.lat]).addTo(map);
+  map.flyTo({ center: [r.lng, r.lat], zoom: 17.5, pitch: 60, duration: 2200 });
   $('results').hidden = true;
 }
 $('search').addEventListener('submit', async (e) => {
@@ -172,26 +212,36 @@ $('search').addEventListener('submit', async (e) => {
   const list = $('results');
   list.hidden = false;
   list.innerHTML = '<li class="msg">Buscando…</li>';
-  try {
-    const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=6&countrycodes=br&accept-language=pt-BR&bounded=1&viewbox=${SEARCH_BOX}&q=${encodeURIComponent(q)}`;
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(res.status);
-    const found = await res.json();
-    if (!found.length) { list.innerHTML = '<li class="msg">Nada encontrado em Fortaleza. Tente rua e número, ou o nome de um lugar.</li>'; return; }
-    if (found.length === 1) return goTo(found[0]);
-    list.innerHTML = '';
-    found.forEach((r) => {
-      const li = document.createElement('li');
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.textContent = r.display_name.replace(/, (Região Geográfica|Mesorregião|Microrregião|Região Metropolitana)[^,]*/g, '').replace(/, Brasil$/, '');
-      b.addEventListener('click', () => goTo(r));
-      li.appendChild(b);
-      list.appendChild(li);
-    });
-  } catch {
-    list.innerHTML = '<li class="msg">A busca não respondeu. Verifique a conexão e tente de novo.</li>';
+  let found = [];
+  try { found = await searchEsri(q); } catch { /* fall back below */ }
+  if (!found.length) {
+    try { found = await searchNominatim(q); } catch {
+      list.innerHTML = '<li class="msg">A busca não respondeu. Verifique a conexão e tente de novo.</li>';
+      return;
+    }
   }
+  if (!found.length) {
+    list.innerHTML = '<li class="msg">Nada encontrado em Fortaleza. Tente "rua, número, bairro" ou o nome de um lugar.</li>';
+    return;
+  }
+  if (found[0].exact && found.filter((r) => r.exact).length === 1) return goTo(found[0]);
+  list.innerHTML = '';
+  if (/\d/.test(q) && !found.some((r) => r.exact)) {
+    list.insertAdjacentHTML('beforeend', '<li class="msg">Número não encontrado; mostrando a rua. Tente incluir o bairro.</li>');
+  }
+  found.forEach((r) => {
+    const li = document.createElement('li');
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = r.label;
+    const tag = document.createElement('span');
+    tag.className = 'precision';
+    tag.textContent = r.precision;
+    b.appendChild(tag);
+    b.addEventListener('click', () => goTo(r));
+    li.appendChild(b);
+    list.appendChild(li);
+  });
 });
 map.on('moveend', () => render());
 map.on('rotate', () => render());

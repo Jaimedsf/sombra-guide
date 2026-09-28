@@ -20,7 +20,7 @@ Fortaleza fica a 3,7° ao sul do Equador. O sol passa quase a pino o ano todo e 
 - Sombras reais projetadas no chão, nas fachadas e nos telhados, inclusive a de uma torre sobre os vizinhos
 - Horário atual de Fortaleza ao abrir, com controles de hora e de dia do ano e animações de um dia ou de um ano
 - Atalhos para solstícios, equinócios e os dias de sol a pino
-- Busca de endereço
+- Busca de endereço com número, com indicação de precisão: número exato, número aproximado ou só a rua
 - Bússola do céu com a posição do sol, o caminho dele no dia e a direção da sombra
 - Nascer e pôr do sol, meio-dia solar e altura máxima do sol no dia
 - Comprimento da sombra de um prédio de 10 m na hora escolhida
@@ -60,7 +60,8 @@ OpenFreeMap (tiles vetoriais do OSM) ──► MapLibre GL (mapa base)
 2. **Prédios 3D.** O arquivo `src/city3d.js` lê os polígonos de prédio dos tiles carregados e monta uma única malha com paredes e telhados triangulados. Isso cobre um raio de 1,2 km do centro da tela, em coordenadas locais em metros. A malha é refeita quando o mapa se afasta dessa área ou chegam tiles novos.
 3. **Sol.** O SunCalc calcula o azimute e a altura do sol no centro do mapa. Esses valores posicionam uma `DirectionalLight` do three.js. A câmera de sombra acompanha o centro da tela.
 4. **Sombras.** Um mapa de sombra de 4096² sobre 2,4 km dá cerca de 0,6 m por texel. Um plano com `ShadowMaterial` mostra só a sombra sobre o mapa base.
-5. **Horário.** Tudo fica no horário de Fortaleza (UTC−3, sem horário de verão), em qualquer fuso em que o navegador esteja.
+5. **Busca.** O Esri é consultado primeiro. No OSM de Fortaleza quase nenhuma casa tem número cadastrado, então o Nominatim só entra se o Esri falhar ou não achar nada.
+6. **Horário.** Tudo fica no horário de Fortaleza (UTC−3, sem horário de verão), em qualquer fuso em que o navegador esteja.
 
 ## Rodar localmente
 
@@ -105,7 +106,7 @@ O `dist/` também funciona em outros hosts estáticos gratuitos, como Cloudflare
 
 - Dados © colaboradores do [OpenStreetMap](https://www.openstreetmap.org/copyright), sob a licença ODbL
 - Tiles e estilo: [OpenFreeMap](https://openfreemap.org)
-- Busca de endereço: [Nominatim](https://nominatim.org), com uma requisição por busca, conforme a [política de uso](https://operations.osmfoundation.org/policies/nominatim/)
+- Busca de endereço: [Esri ArcGIS World Geocoder](https://developers.arcgis.com/rest/geocode/), que conhece os números das casas em Fortaleza. É usado sem chave e sem guardar resultados, como a Esri permite para buscas pontuais. O [Nominatim](https://nominatim.org) fica de reserva, com uma requisição por busca, conforme a [política de uso](https://operations.osmfoundation.org/policies/nominatim/)
 - Bibliotecas: [MapLibre GL JS](https://maplibre.org), [three.js](https://threejs.org), [SunCalc](https://github.com/mourner/suncalc), [Vite](https://vite.dev)
 
 ## Licença

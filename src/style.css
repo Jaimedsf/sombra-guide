@@ -66,6 +66,10 @@ h1 { margin: 0; font-size: 20px; font-weight: 700; letter-spacing: -0.01em; }
   padding: 6px 8px; font-size: 13px; cursor: pointer;
 }
 .results button:hover { background: var(--chip); }
+.results .precision {
+  display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 999px;
+  font-size: 11px; font-weight: 600; background: var(--chip); color: var(--muted);
+}
 .results .msg { color: var(--muted); font-size: 13px; padding: 4px 8px; }
 .readout { display: grid; grid-template-columns: 112px 1fr; gap: 14px; align-items: center; }
 #compass { width: 112px; height: 112px; overflow: visible; }
