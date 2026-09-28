@@ -127,8 +127,8 @@ function render() {
     // official sunrise/sunset is when the sun's upper edge touches the horizon (~ -0.83°)
     : pos.altitude > -1 ? `Sol no horizonte · ${state.min < 720 ? 'nascendo' : 'se pondo'} no ${dirName(pos.azimuth)}`
       : pos.altitude > -6 ? 'Crepúsculo · sol abaixo do horizonte' : 'Noite · sem sol';
-  $('f-rise').textContent = fmtMin(toLocalMin(times.sunrise));
-  $('f-set').textContent = fmtMin(toLocalMin(times.sunset));
+  $('f-rise').textContent = fmtMin(dayRange[0]); // same rounding as the slider ends
+  $('f-set').textContent = fmtMin(dayRange[1]);
   $('f-noon').textContent = fmtMin(toLocalMin(times.solarNoon));
   $('f-noonalt').textContent = `${noon.altitude.toFixed(0)}° · ${dirName(noon.azimuth)}`;
 
