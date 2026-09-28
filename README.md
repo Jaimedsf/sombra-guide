@@ -1,5 +1,9 @@
 # Sombra Guide · Fortaleza
 
+[![Deploy](https://github.com/Jaimedsf/sombra-guide/actions/workflows/deploy.yml/badge.svg)](https://github.com/Jaimedsf/sombra-guide/actions/workflows/deploy.yml)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/Jaimedsf/sombra-guide/badge)](https://scorecard.dev/viewer/?uri=github.com/Jaimedsf/sombra-guide)
+[![Licença MIT](https://img.shields.io/badge/licen%C3%A7a-MIT-blue)](LICENSE)
+
 Mapa 3D interativo de Fortaleza (CE) que mostra **onde está o sol** e **a sombra que cada prédio faz**, agora ou em qualquer data e hora do ano.
 
 **Acesse:** https://jaimedsf.github.io/sombra-guide/
@@ -108,6 +112,17 @@ O `dist/` também funciona em outros hosts estáticos gratuitos, como Cloudflare
 - Tiles e estilo: [OpenFreeMap](https://openfreemap.org)
 - Busca de endereço: [Esri ArcGIS World Geocoder](https://developers.arcgis.com/rest/geocode/), que conhece os números das casas em Fortaleza. É usado sem chave e sem guardar resultados, como a Esri permite para buscas pontuais. O [Nominatim](https://nominatim.org) fica de reserva, com uma requisição por busca, conforme a [política de uso](https://operations.osmfoundation.org/policies/nominatim/)
 - Bibliotecas: [MapLibre GL JS](https://maplibre.org), [three.js](https://threejs.org), [SunCalc](https://github.com/mourner/suncalc), [Vite](https://vite.dev)
+
+## Segurança e qualidade
+
+- **CodeQL**: análise estática do JavaScript e dos workflows a cada push e toda semana, com o conjunto estendido de regras
+- **Dependabot**: alertas de vulnerabilidade, PRs automáticos de correção e atualização semanal das dependências npm e das GitHub Actions
+- **Secret scanning** com bloqueio no push: impede subir chaves e tokens por engano
+- **OpenSSF Scorecard**: nota de segurança da cadeia de suprimentos, recalculada toda semana (selo acima)
+- **CI**: cada push e PR roda `npm audit`, o teste (`npm run check`) e o build antes de publicar
+- Actions fixadas por SHA e token do Actions somente leitura por padrão
+- A `main` não aceita force push nem pode ser apagada
+- Vulnerabilidades devem ser relatadas em privado, conforme o [SECURITY.md](SECURITY.md)
 
 ## Licença
 
