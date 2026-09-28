@@ -77,7 +77,6 @@ function applySun(pos) {
 }
 
 // ---------- compass (sky dome seen from above) ----------
-const NS = 'http://www.w3.org/2000/svg';
 const skyXY = (azDeg, altDeg, bearing) => {
   const a = ((azDeg - bearing) * Math.PI) / 180;
   const r = (50 * (90 - Math.max(altDeg, 0))) / 90;
