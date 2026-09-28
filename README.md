@@ -74,7 +74,7 @@ Requer Node.js 20 ou mais recente.
 ```sh
 npm install
 npm run dev      # http://localhost:5173
-npm run check    # teste de fuso horário e posição do sol
+npm test         # checagem rápida + testes de propriedade (fast-check)
 npm run build    # site estático em dist/
 npm run preview  # serve o dist/ localmente
 ```
@@ -90,7 +90,8 @@ src/city3d.js       camada three.js: prédios, luz solar e sombras
 src/time.js         conversões para o horário de Fortaleza
 src/extra-buildings.json  prédios que ainda não estão no OSM (GeoJSON com render_height)
 src/style.css       estilos
-check.mjs           teste rápido (npm run check)
+check.mjs           checagem rápida de fuso e posição do sol
+test/               testes de propriedade com fast-check (npm test)
 .github/workflows/  deploy automático no GitHub Pages
 ```
 
@@ -126,7 +127,7 @@ Quando o prédio for mapeado no OSM, apague a entrada do arquivo. Se ficar, ele 
 - **Dependabot**: alertas de vulnerabilidade, PRs automáticos de correção e atualização semanal das dependências npm e das GitHub Actions
 - **Secret scanning** com bloqueio no push: impede subir chaves e tokens por engano
 - **OpenSSF Scorecard**: nota de segurança da cadeia de suprimentos, recalculada toda semana (selo acima)
-- **CI**: cada push e PR roda `npm audit`, o teste (`npm run check`) e o build antes de publicar
+- **CI**: cada push e PR roda `npm audit`, os testes (`npm test`, com testes de propriedade em fast-check) e o build antes de publicar
 - Actions fixadas por SHA e token do Actions somente leitura por padrão
 - A `main` não aceita force push nem pode ser apagada
 - Vulnerabilidades devem ser relatadas em privado, conforme o [SECURITY.md](SECURITY.md)

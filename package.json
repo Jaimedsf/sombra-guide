@@ -6,7 +6,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "check": "node check.mjs"
+    "check": "node check.mjs",
+    "test": "node check.mjs && node --test 'test/*.test.js'"
   },
   "license": "MIT",
   "dependencies": {
@@ -15,6 +16,7 @@
     "three": "^0.186.1"
   },
   "devDependencies": {
+    "fast-check": "^4.10.2",
     "vite": "^8.3.1"
   },
   "type": "module",
