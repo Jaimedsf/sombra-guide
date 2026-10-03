@@ -27,11 +27,12 @@ Fortaleza fica a 3,7° ao sul do Equador. O sol passa quase a pino o ano todo e 
 - Sombras reais projetadas no chão, nas fachadas e nos telhados, inclusive a de uma torre sobre os vizinhos
 - Horário atual de Fortaleza ao abrir, com controles de hora e de dia do ano e animações de um dia ou de um ano
 - Atalhos para solstícios, equinócios e os dias de sol a pino
-- Busca de endereço com número e sugestões enquanto você digita, com indicação de precisão: número exato, número aproximado ou só a rua
+- Busca de endereço com número e sugestões enquanto você digita, com indicação de precisão: número exato, número aproximado ou só a rua. O marcador mostra o endereço e pode ser removido
+- Botão de localização, para ver o sol e a sombra onde você está
 - Bússola do céu com a posição do sol, o caminho dele no dia e a direção da sombra
 - Nascer e pôr do sol, meio-dia solar e altura máxima do sol no dia
 - Comprimento da sombra de um prédio de 10 m na hora escolhida
-- Link compartilhável: a câmera e o momento ficam na URL
+- Link compartilhável: a câmera e o momento ficam na URL, e o botão "Copiar link" (no celular, "Compartilhar") envia tudo de uma vez
 
 ## Como usar
 
@@ -94,6 +95,8 @@ src/main.js         mapa, estado de data e hora, painel, busca, animações
 src/city3d.js       camada three.js: prédios, luz solar e sombras
 src/time.js         conversões para o horário de Fortaleza e dia do ano
 src/play.js         animações de um dia e de um ano
+src/sun.js          luz do dia e próximo nascer do sol
+src/share.js        botão "Copiar link" / "Compartilhar"
 src/search.js       busca de endereço (Esri e Nominatim)
 src/url.js          data e hora na URL (?data=&hora=)
 src/extra-buildings.json  prédios que ainda não estão no OSM (GeoJSON com render_height)

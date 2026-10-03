@@ -1,6 +1,6 @@
 {
   "name": "sombra-guide",
-  "version": "1.1.2",
+  "version": "1.2.0",
   "description": "3D map of Fortaleza (CE) showing sun position and building shadows for any date and time",
   "scripts": {
     "dev": "vite",

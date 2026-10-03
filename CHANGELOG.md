@@ -4,6 +4,18 @@ Todas as mudanças relevantes do projeto. O formato segue o [Keep a Changelog](h
 
 Cada versão tem uma tag `vX.Y.Z` no git e uma página em [Releases](https://github.com/Jaimedsf/sombra-guide/releases). Vulnerabilidades corrigidas, quando houver, aparecem numa seção **Segurança** da versão, com o identificador CVE ou GHSA.
 
+## [1.2.0] - 2026-10-03
+
+### Adicionado
+
+- Botão "Copiar link" no topo do painel. No celular ele vira "Compartilhar" e abre o menu de compartilhar do sistema. O link abre a mesma câmera, data e hora
+- Botão de localização no mapa, para ir até onde você está
+- O marcador da busca mostra o endereço num balão, com um botão para remover o marcador
+
+### Alterado
+
+- Os botões do mapa (aproximar, afastar, bússola, localização) têm as dicas em português
+
 ## [1.1.2] - 2026-10-03
 
 ### Corrigido

@@ -10,6 +10,7 @@ import { advance, createPlayer } from './play.js';
 import { daylight, nextSunrise } from './sun.js';
 import { parseMoment, momentSearch } from './url.js';
 import { findAddress, suggestAddress, resolveSuggestion, latestOnly } from './search.js';
+import { shareLink } from './share.js';
 import './style.css';
 
 const START = [-38.4965, -3.7262];
@@ -62,6 +63,16 @@ try {
     attributionControl: { compact: true, customAttribution: 'Busca: <a href="https://www.esri.com" target="_blank" rel="noopener">Powered by Esri</a> · Nominatim' },
     hash: true, // view lives in the URL, so it can be shared
     pixelRatio: Math.min(devicePixelRatio, 2), // 3x screens cost 2.25x the pixels for little gain
+    locale: {
+      'AttributionControl.ToggleAttribution': 'Mostrar ou ocultar os créditos',
+      'GeolocateControl.FindMyLocation': 'Mostrar minha localização',
+      'GeolocateControl.LocationNotAvailable': 'Localização indisponível',
+      'Marker.Title': 'Endereço buscado',
+      'NavigationControl.ResetBearing': 'Arraste para girar; clique para apontar para o norte',
+      'NavigationControl.ZoomIn': 'Aproximar',
+      'NavigationControl.ZoomOut': 'Afastar',
+      'Popup.Close': 'Fechar',
+    },
   });
 } catch (err) {
   // no WebGL 2: nothing on the page works without the map
@@ -78,6 +89,11 @@ map.on('error', () => {
   mapError('O mapa não carregou. Verifique a conexão e tente de novo.', true);
 });
 map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right');
+// "where am I": flies to the user's position (the browser asks for permission first)
+map.addControl(new maplibregl.GeolocateControl({
+  positionOptions: { enableHighAccuracy: true },
+  fitBoundsOptions: { maxZoom: 17.5 },
+}), 'top-right');
 // three.js draws the buildings (with real shadows) instead of the style's extrusions
 const city = createCityLayer(map, {
   extra: extraBuildings.features,
@@ -197,13 +213,34 @@ function render() {
 // keep the chosen moment in the URL (none in live mode), so a copied link opens it.
 // Debounced: while playing, render() runs every frame, and browsers limit replaceState calls.
 let urlTimer = 0;
+function syncUrl() {
+  clearTimeout(urlTimer);
+  const search = momentSearch(location.search, state);
+  if (search !== location.search) history.replaceState(history.state, '', location.pathname + search + location.hash);
+}
 function syncUrlSoon() {
   clearTimeout(urlTimer);
-  urlTimer = setTimeout(() => {
-    const search = momentSearch(location.search, state);
-    if (search !== location.search) history.replaceState(history.state, '', location.pathname + search + location.hash);
-  }, 400);
+  urlTimer = setTimeout(syncUrl, 400);
 }
+
+// ---------- share ----------
+// the URL holds the camera and the moment: phones get the system share sheet, others a copy
+const canShare = PHONE && typeof navigator.share === 'function';
+const SHARE_LABEL = canShare ? 'Compartilhar' : 'Copiar link';
+let shareTimer = 0;
+$('share').textContent = SHARE_LABEL;
+$('share').addEventListener('click', async () => {
+  syncUrl(); // don't wait for the debounce
+  const result = await shareLink(location.href, {
+    share: canShare ? (data) => navigator.share(data) : null,
+    copy: (text) => navigator.clipboard.writeText(text),
+  });
+  const feedback = { copied: 'Link copiado', failed: 'Copie da barra de endereço' }[result];
+  if (!feedback) return;
+  clearTimeout(shareTimer);
+  $('share').textContent = feedback;
+  shareTimer = setTimeout(() => { $('share').textContent = SHARE_LABEL; }, 2000);
+});
 
 const manual = () => { state.live = false; };
 $('time').addEventListener('input', (e) => { manual(); state.min = +e.target.value; render(); });
@@ -257,10 +294,20 @@ function closeResults() {
   list.hidden = true;
 }
 
+// the pin says which address it is (tap it to see again) and can be removed
 function goTo(r) {
   closeResults();
   marker?.remove();
-  marker = new maplibregl.Marker({ color: '#c9770a' }).setLngLat([r.lng, r.lat]).addTo(map);
+  const card = Object.assign(document.createElement('div'), { className: 'pin' });
+  const remove = Object.assign(document.createElement('button'), { type: 'button', className: 'pill', textContent: 'Remover marcador' });
+  card.append(Object.assign(document.createElement('p'), { textContent: r.label }), remove);
+  const pin = new maplibregl.Marker({ color: '#c9770a' })
+    .setLngLat([r.lng, r.lat])
+    .setPopup(new maplibregl.Popup({ anchor: 'bottom', maxWidth: '260px' }).setDOMContent(card))
+    .addTo(map);
+  remove.addEventListener('click', () => { pin.remove(); if (marker === pin) marker = null; });
+  marker = pin;
+  pin.togglePopup();
   map.flyTo({ center: [r.lng, r.lat], zoom: 17.5, pitch: 60, duration: 2200 });
   $('q').blur(); // closes the phone keyboard so the map is visible
 }
