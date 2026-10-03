@@ -113,6 +113,9 @@ h1 { margin: 0; font-size: 20px; font-weight: 700; letter-spacing: -0.01em; }
 input[type="range"] { width: 100%; accent-color: var(--sun-deep); }
 .range { display: grid; gap: 2px; }
 .ends { display: flex; justify-content: space-between; font: 500 11px var(--mono); color: var(--muted); }
+#t-night { color: var(--shadow); }
+/* live mode at night: the slider only spans daylight, so it steps back */
+input[type="range"].night { opacity: 0.4; }
 
 .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 input[type="date"] {
@@ -186,4 +189,14 @@ input[type="date"] {
   .cam button.wide { grid-column: span 1; font-size: 11px; }
   .maplibregl-ctrl-zoom-in, .maplibregl-ctrl-zoom-out { display: none !important; }
 }
+/* shown when the map can't start (no WebGL 2, offline) */
+.map-error {
+  position: absolute; z-index: 4; top: 30%; left: 50%; transform: translateX(-50%);
+  width: min(420px, calc(100% - 32px)); display: grid; gap: 12px; justify-items: start;
+  padding: 16px 18px; background: var(--panel-solid); border: 1px solid var(--line); border-radius: 14px;
+  box-shadow: 0 12px 40px rgb(20 18 40 / 0.18);
+}
+.map-error p { margin: 0; }
+.no-map .panel, .no-map .cam { display: none; }
+
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }

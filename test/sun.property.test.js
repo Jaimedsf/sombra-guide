@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import fc from 'fast-check';
 import { getPosition, getTimes } from 'suncalc';
 import { toUtc, toLocalMin } from '../src/time.js';
+import { daylight, nextSunrise } from '../src/sun.js';
 
 const LAT = -3.7262, LNG = -38.4965; // Fortaleza (Meireles)
 
@@ -53,4 +54,22 @@ test('sunrise and sunset are in the morning and late afternoon, local time', () 
     assert.ok(rise > 5 * 60 && rise < 6 * 60, `sunrise ${rise}`);
     assert.ok(set > 17 * 60 && set < 18 * 60, `sunset ${set}`);
   }));
+});
+
+test('after sunset, the next sunrise is the next day\'s, rounded like the "Nascer" card', () => {
+  fc.assert(fc.property(day, fc.integer({ min: 17 * 60, max: 1439 }), ({ y, m, d }, min) => {
+    fc.pre(min > daylight(y, m, d, LAT, LNG)[1]);
+    assert.deepEqual(nextSunrise({ y, m, d, min }, LAT, LNG), { min: daylight(y, m, d + 1, LAT, LNG)[0], tomorrow: true });
+  }));
+});
+
+test('before dawn, the next sunrise is the same day\'s', () => {
+  fc.assert(fc.property(day, fc.integer({ min: 0, max: 299 }), ({ y, m, d }, min) => {
+    assert.deepEqual(nextSunrise({ y, m, d, min }, LAT, LNG), { min: daylight(y, m, d, LAT, LNG)[0], tomorrow: false });
+  }));
+});
+
+test('the night of 31 Dec points to the sunrise of 1 Jan', () => {
+  const next = nextSunrise({ y: 2026, m: 12, d: 31, min: 22 * 60 }, LAT, LNG);
+  assert.deepEqual(next, { min: daylight(2027, 1, 1, LAT, LNG)[0], tomorrow: true });
 });

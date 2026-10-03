@@ -7,6 +7,7 @@ import extraBuildings from './extra-buildings.json';
 import { getPosition, getTimes } from 'suncalc';
 import { localNow, toUtc, toLocalMin, fmtMin, fmtDate, dayOfYear, daysInYear, fromDayOfYear } from './time.js';
 import { advance, createPlayer } from './play.js';
+import { daylight, nextSunrise } from './sun.js';
 import { parseMoment, momentSearch } from './url.js';
 import { findAddress, suggestAddress, resolveSuggestion, latestOnly } from './search.js';
 import './style.css';
@@ -15,6 +16,8 @@ const START = [-38.4965, -3.7262];
 
 const $ = (id) => document.getElementById(id);
 const MONTHS = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+// screen readers get the whole month name
+const MONTH_NAMES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
 const DIRS = ['norte', 'nordeste', 'leste', 'sudeste', 'sul', 'sudoeste', 'oeste', 'noroeste'];
 const dirName = (deg) => DIRS[Math.round((((deg % 360) + 360) % 360) / 45) % 8];
 
@@ -31,20 +34,48 @@ Object.assign(state, localNow());
 maplibregl.setWorkerUrl(workerUrl);
 
 // ---------- map ----------
+// a message over the map when it can't start, instead of a blank screen
+function mapError(text, retry) {
+  const box = Object.assign(document.createElement('div'), { className: 'map-error', role: 'alert' });
+  box.append(Object.assign(document.createElement('p'), { textContent: text }));
+  if (retry) {
+    const b = Object.assign(document.createElement('button'), { type: 'button', className: 'btn primary', textContent: 'Tentar de novo' });
+    b.addEventListener('click', () => location.reload());
+    box.append(b);
+  }
+  document.body.append(box);
+}
+
 // phones: fewer pixels and a lighter 3D profile keep panning smooth
 const PHONE = matchMedia('(max-width: 560px), (pointer: coarse)').matches;
-const map = new maplibregl.Map({
-  container: 'map',
-  style: 'https://tiles.openfreemap.org/styles/liberty',
-  center: START,
-  zoom: 16.2,
-  pitch: 60,
-  bearing: -25,
-  maxPitch: 78,
-  // the address search providers are credited next to the map's own data credits
-  attributionControl: { compact: true, customAttribution: 'Busca: <a href="https://www.esri.com" target="_blank" rel="noopener">Powered by Esri</a> · Nominatim' },
-  hash: true, // view lives in the URL, so it can be shared
-  pixelRatio: Math.min(devicePixelRatio, 2), // 3x screens cost 2.25x the pixels for little gain
+let map;
+try {
+  map = new maplibregl.Map({
+    container: 'map',
+    style: 'https://tiles.openfreemap.org/styles/liberty',
+    center: START,
+    zoom: 16.2,
+    pitch: 60,
+    bearing: -25,
+    maxPitch: 78,
+    // the address search providers are credited next to the map's own data credits
+    attributionControl: { compact: true, customAttribution: 'Busca: <a href="https://www.esri.com" target="_blank" rel="noopener">Powered by Esri</a> · Nominatim' },
+    hash: true, // view lives in the URL, so it can be shared
+    pixelRatio: Math.min(devicePixelRatio, 2), // 3x screens cost 2.25x the pixels for little gain
+  });
+} catch (err) {
+  // no WebGL 2: nothing on the page works without the map
+  document.body.classList.add('no-map');
+  mapError('O mapa 3D precisa de WebGL 2, e este navegador não conseguiu ativá-lo. Tente outro navegador ou ligue a aceleração por hardware nas configurações dele.');
+  throw err;
+}
+// errors before the style arrives mean no map at all (offline, tile server down); later ones
+// are single tiles that MapLibre retries
+let styleLoaded = false;
+map.once('style.load', () => { styleLoaded = true; });
+map.on('error', () => {
+  if (styleLoaded || document.querySelector('.map-error')) return;
+  mapError('O mapa não carregou. Verifique a conexão e tente de novo.', true);
 });
 map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right');
 // three.js draws the buildings (with real shadows) instead of the style's extrusions
@@ -107,7 +138,7 @@ let dayRange = [0, 1439];
 function render() {
   const { lng, lat } = map.getCenter();
   const times = getTimes(toUtc(state.y, state.m, state.d, 720), lat, lng);
-  dayRange = [Math.ceil(toLocalMin(times.sunrise)), Math.floor(toLocalMin(times.sunset))];
+  dayRange = daylight(state.y, state.m, state.d, lat, lng);
   // live mode keeps the real clock, even at night; simulated moments stay within daylight
   if (!state.live) state.min = Math.min(dayRange[1], Math.max(dayRange[0], state.min));
   const date = toUtc(state.y, state.m, state.d, state.min);
@@ -134,19 +165,26 @@ function render() {
     const len = 10 * ratio;
     $('shadow-note').textContent = `Um prédio de 10 m faz sombra de ${len < 100 ? len.toFixed(1).replace('.', ',') : '100+'} m para o ${dirName(pos.azimuth + 180)}.`
       + (noon.altitude > 86 ? ' Perto do meio-dia de hoje o sol passa quase a pino.' : '');
+  } else if (pos.altitude > -1) {
+    $('shadow-note').textContent = 'Sol rente ao horizonte: as sombras ficam longas demais para medir.';
   } else {
-    $('shadow-note').textContent = pos.altitude > -1
-      ? 'Sol rente ao horizonte: as sombras ficam longas demais para medir.'
-      : `Sem sombra do sol agora. Próximo nascer: ${fmtMin(toLocalMin(times.sunrise))}.`;
+    const next = nextSunrise(state, lat, lng);
+    $('shadow-note').textContent = `Sem sombra do sol agora. Próximo nascer: ${next.tomorrow ? 'amanhã, ' : ''}${fmtMin(next.min)}.`;
   }
 
+  // the slider only spans daylight; at night (live mode only) it is dimmed and says so
+  const night = state.min < dayRange[0] || state.min > dayRange[1];
   $('time').min = dayRange[0];
   $('time').max = dayRange[1];
   $('time').value = Math.floor(state.min);
+  $('time').classList.toggle('night', night);
+  $('time').setAttribute('aria-valuetext', night ? `${fmtMin(state.min)}, noite` : fmtMin(state.min));
   $('t-rise').textContent = `nascer ${fmtMin(dayRange[0])}`;
+  $('t-night').textContent = night ? 'agora é noite' : '';
   $('t-set').textContent = `pôr ${fmtMin(dayRange[1])}`;
   $('doy').max = daysInYear(state.y) - 1; // before value, or 31 Dec of a leap year gets clamped
   $('doy').value = dayOfYear(state);
+  $('doy').setAttribute('aria-valuetext', `${state.d} de ${MONTH_NAMES[state.m - 1]} de ${state.y}`);
   $('date').value = fmtDate(state);
   $('play-day').setAttribute('aria-pressed', state.playing === 'day');
   $('play-year').setAttribute('aria-pressed', state.playing === 'year');

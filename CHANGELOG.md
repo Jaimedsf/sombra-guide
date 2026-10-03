@@ -4,6 +4,15 @@ Todas as mudanças relevantes do projeto. O formato segue o [Keep a Changelog](h
 
 Cada versão tem uma tag `vX.Y.Z` no git e uma página em [Releases](https://github.com/Jaimedsf/sombra-guide/releases). Vulnerabilidades corrigidas, quando houver, aparecem numa seção **Segurança** da versão, com o identificador CVE ou GHSA.
 
+## [1.1.2] - 2026-10-03
+
+### Corrigido
+
+- À noite, "Próximo nascer" mostrava o nascer do sol do mesmo dia, que já tinha passado, e com um minuto de diferença do cartão "Nascer". Agora mostra o de amanhã, com o mesmo arredondamento
+- À noite, no modo "agora", a barra de hora parava no pôr do sol como se fosse fim de tarde. Agora ela fica apagada e avisa que é noite
+- Leitores de tela liam as barras de hora e de dia como números ("1050", "283"). Agora leem a hora e a data, e o botão "2D" é anunciado como "2D, vista de cima"
+- Sem WebGL 2 ou sem conexão, a tela ficava em branco. Agora aparece uma mensagem explicando o que houve, com "Tentar de novo" quando o problema é a conexão
+
 ## [1.1.1] - 2026-10-03
 
 ### Removido

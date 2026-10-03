@@ -41,7 +41,7 @@ Fortaleza fica a 3,7° ao sul do Equador. O sol passa quase a pino o ano todo e 
 | Girar e inclinar | botão direito + arrastar, ou Ctrl + arrastar | dois dedos |
 | Zoom | roda do mouse | pinça |
 
-Os botões ⟲ ⟳ ▲ ▼, "De cima" e "3D" no canto inferior direito fazem o mesmo.
+Os botões ⟲ ⟳ ▲ ▼, "2D" e "3D" no canto inferior direito fazem o mesmo.
 
 ### Parâmetros de URL
 
