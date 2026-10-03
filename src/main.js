@@ -109,10 +109,16 @@ map.on('load', () => {
 
 // ---------- sun ----------
 const clamp01 = (v) => Math.min(1, Math.max(0, v));
+// night darkens the map with a tinted layer over the canvas (markers stay on top): a CSS
+// filter on the WebGL canvas would cost an extra full-screen pass on every map frame
+const shade = Object.assign(document.createElement('div'), { className: 'night-shade' });
+map.getCanvas().after(shade);
+let shadeOpacity = '';
 function applySun(pos) {
   const day = clamp01(pos.altitude / 8); // fades through twilight
   city.setSun(pos.azimuth, pos.altitude, day);
-  map.getCanvas().style.filter = day >= 1 ? '' : `brightness(${0.45 + 0.55 * day}) saturate(${0.5 + 0.5 * day})`;
+  const opacity = (0.55 * (1 - day)).toFixed(2);
+  if (opacity !== shadeOpacity) shade.style.opacity = shadeOpacity = opacity; // no style writes while it holds
 }
 
 // ---------- compass (sky dome seen from above) ----------
@@ -121,16 +127,27 @@ const skyXY = (azDeg, altDeg, bearing) => {
   const r = (50 * (90 - Math.max(altDeg, 0))) / 90;
   return [r * Math.sin(a), -r * Math.cos(a)];
 };
+// today's sun path as [azimuth, altitude] every 10 minutes from sunrise to sunset. It only
+// changes with the date and the place, so frames of a day animation or a rotation reuse it.
+let skyPath = { key: '', points: [] };
+function sunPath(times, lat, lng) {
+  const key = `${fmtDate(state)} ${lat.toFixed(3)} ${lng.toFixed(3)}`; // 0.001° ~ 110 m
+  if (key !== skyPath.key) {
+    const rise = toLocalMin(times.sunrise), set = toLocalMin(times.sunset), points = [];
+    for (let m = rise; m <= set; m += 10) {
+      const p = getPosition(toUtc(state.y, state.m, state.d, m), lat, lng);
+      points.push([p.azimuth, p.altitude]);
+    }
+    skyPath = { key, points };
+  }
+  return skyPath.points;
+}
+
 function drawCompass(pos, times, [lng, lat]) {
   const b = map.getBearing();
   const svg = $('compass');
   let h = `<circle r="50" class="dome"/><circle r="25" class="ring"/>`;
-  // today's sun path, sampled every 10 minutes between sunrise and sunset
-  const rise = toLocalMin(times.sunrise), set = toLocalMin(times.sunset), path = [];
-  for (let m = rise; m <= set; m += 10) {
-    const p = getPosition(toUtc(state.y, state.m, state.d, m), lat, lng);
-    path.push(skyXY(p.azimuth, p.altitude, b).map((v) => v.toFixed(1)).join(','));
-  }
+  const path = sunPath(times, lat, lng).map(([az, alt]) => skyXY(az, alt, b).map((v) => v.toFixed(1)).join(','));
   h += `<polyline points="${path.join(' ')}" class="path"/>`;
   ['N', 'L', 'S', 'O'].forEach((t, i) => {
     const a = ((i * 90 - b) * Math.PI) / 180;

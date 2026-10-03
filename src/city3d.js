@@ -13,6 +13,65 @@ const mercX = (lng) => (lng + 180) / 360;
 const mercY = (lat) => (180 - (180 / Math.PI) * Math.log(Math.tan(Math.PI / 4 + (lat * D2R) / 2))) / 360;
 
 /**
+ * Wall and roof triangles for building footprints (GeoJSON features with render_height and
+ * render_min_height), skipping those whose first vertex is more than `radius` meters away.
+ * `toLocal(lng, lat)` gives [x, y] in meters. Returns flat arrays, 3 numbers per vertex;
+ * every triangle is counter-clockwise seen from the side its normal points to.
+ */
+export function buildingGeometry(features, toLocal, radius) {
+  const pos = [], nrm = [];
+  for (const f of features) {
+    // an outline whose building:part pieces are drawn instead (OpenMapTiles schema)
+    if (f.properties.hide_3d) continue;
+    const top = f.properties.render_height || DEFAULT_HEIGHT_M;
+    const base = f.properties.render_min_height || 0;
+    if (top <= base) continue;
+    const polys = f.geometry.type === 'Polygon' ? [f.geometry.coordinates]
+      : f.geometry.type === 'MultiPolygon' ? f.geometry.coordinates : [];
+
+    for (const poly of polys) {
+      // cheap reject on the first vertex before converting every ring
+      const first = poly[0]?.[0];
+      if (!first || Math.hypot(...toLocal(first[0], first[1])) > radius) continue;
+      const rings = poly.map((ring) => {
+        const pts = ring.map(([lng, lat]) => toLocal(lng, lat));
+        if (pts.length > 1 && pts[0][0] === pts.at(-1)[0] && pts[0][1] === pts.at(-1)[1]) pts.pop();
+        return pts;
+      });
+      if (rings[0].length < 3) continue;
+
+      // outer ring counter-clockwise, holes clockwise, so wall normals point outward
+      rings.forEach((r, i) => {
+        const ccw = THREE.ShapeUtils.area(r.map(([px, py]) => ({ x: px, y: py }))) > 0;
+        if (ccw !== (i === 0)) r.reverse();
+      });
+
+      for (const r of rings) {
+        for (let i = 0; i < r.length; i++) {
+          const [ax, ay] = r[i], [bx, by] = r[(i + 1) % r.length];
+          const len = Math.hypot(bx - ax, by - ay) || 1;
+          const nx = (by - ay) / len, ny = -(bx - ax) / len;
+          pos.push(ax, ay, base, bx, by, base, bx, by, top, ax, ay, base, bx, by, top, ax, ay, top);
+          nrm.push(nx, ny, 0, nx, ny, 0, nx, ny, 0, nx, ny, 0, nx, ny, 0, nx, ny, 0);
+        }
+      }
+
+      const contour = rings[0].map(([px, py]) => new THREE.Vector2(px, py));
+      const holes = rings.slice(1).map((r) => r.map(([px, py]) => new THREE.Vector2(px, py)));
+      const all = contour.concat(...holes);
+      for (const [i, j, k] of THREE.ShapeUtils.triangulateShape(contour, holes)) {
+        const a = all[i], b = all[j], c2 = all[k];
+        const flip = (b.x - a.x) * (c2.y - a.y) - (b.y - a.y) * (c2.x - a.x) < 0;
+        const [p, q] = flip ? [c2, b] : [b, c2];
+        pos.push(a.x, a.y, top, p.x, p.y, top, q.x, q.y, top);
+        nrm.push(0, 0, 1, 0, 0, 1, 0, 0, 1);
+      }
+    }
+  }
+  return { pos, nrm };
+}
+
+/**
  * MapLibre custom layer that draws OSM buildings (from the style's vector tiles)
  * with three.js and lets a directional "sun" cast real shadows on them and on the ground.
  * Scene units are meters around `origin`: x east, y north, z up.
@@ -23,6 +82,8 @@ export function createCityLayer(map, {
   let renderer, scene, camera, sun, hemi, ground, shadowMat, buildings;
   let origin = null; // { x, y, scale } in mercator units
   let dirty = true;
+  // reused every frame instead of allocated
+  const viewMatrix = new THREE.Matrix4(), localMatrix = new THREE.Matrix4(), localScale = new THREE.Vector3();
 
   const toLocal = (lng, lat) => [
     (mercX(lng) - origin.x) / origin.scale,
@@ -35,7 +96,6 @@ export function createCityLayer(map, {
     // mercator units per meter at this latitude
     origin = { x, y, scale: 1 / (40075016.686 * Math.cos(c.lat * D2R)) };
 
-    const pos = [], nrm = [];
     const all = map.querySourceFeatures(sourceId, { sourceLayer });
     // Parent tiles (lower zoom) stay loaded too and carry simplified copies of the same
     // buildings; mixing them doubles roofs and casts bogus shadows. `_z` is MapLibre's
@@ -43,53 +103,7 @@ export function createCityLayer(map, {
     const zMax = all.reduce((z, f) => Math.max(z, f._z ?? 0), 0);
     // `extra`: GeoJSON buildings not yet in OSM, drawn the same way
     const features = all.filter((f) => (f._z ?? 0) === zMax).concat(extra);
-
-    for (const f of features) {
-      const top = f.properties.render_height || DEFAULT_HEIGHT_M;
-      const base = f.properties.render_min_height || 0;
-      if (top <= base) continue;
-      const polys = f.geometry.type === 'Polygon' ? [f.geometry.coordinates]
-        : f.geometry.type === 'MultiPolygon' ? f.geometry.coordinates : [];
-
-      for (const poly of polys) {
-        // cheap reject on the first vertex before converting every ring
-        const first = poly[0]?.[0];
-        if (!first || Math.hypot(...toLocal(first[0], first[1])) > radius) continue;
-        const rings = poly.map((ring) => {
-          const pts = ring.map(([lng, lat]) => toLocal(lng, lat));
-          if (pts.length > 1 && pts[0][0] === pts.at(-1)[0] && pts[0][1] === pts.at(-1)[1]) pts.pop();
-          return pts;
-        });
-        if (rings[0].length < 3) continue;
-
-        // outer ring counter-clockwise, holes clockwise, so wall normals point outward
-        rings.forEach((r, i) => {
-          const ccw = THREE.ShapeUtils.area(r.map(([px, py]) => ({ x: px, y: py }))) > 0;
-          if (ccw !== (i === 0)) r.reverse();
-        });
-
-        for (const r of rings) {
-          for (let i = 0; i < r.length; i++) {
-            const [ax, ay] = r[i], [bx, by] = r[(i + 1) % r.length];
-            const len = Math.hypot(bx - ax, by - ay) || 1;
-            const nx = (by - ay) / len, ny = -(bx - ax) / len;
-            pos.push(ax, ay, base, bx, by, base, bx, by, top, ax, ay, base, bx, by, top, ax, ay, top);
-            nrm.push(nx, ny, 0, nx, ny, 0, nx, ny, 0, nx, ny, 0, nx, ny, 0, nx, ny, 0);
-          }
-        }
-
-        const contour = rings[0].map(([px, py]) => new THREE.Vector2(px, py));
-        const holes = rings.slice(1).map((r) => r.map(([px, py]) => new THREE.Vector2(px, py)));
-        const all = contour.concat(...holes);
-        for (const [i, j, k] of THREE.ShapeUtils.triangulateShape(contour, holes)) {
-          const a = all[i], b = all[j], c2 = all[k];
-          const flip = (b.x - a.x) * (c2.y - a.y) - (b.y - a.y) * (c2.x - a.x) < 0;
-          const [p, q] = flip ? [c2, b] : [b, c2];
-          pos.push(a.x, a.y, top, p.x, p.y, top, q.x, q.y, top);
-          nrm.push(0, 0, 1, 0, 0, 1, 0, 0, 1);
-        }
-      }
-    }
+    const { pos, nrm } = buildingGeometry(features, toLocal, radius);
 
     const geom = new THREE.BufferGeometry();
     geom.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
@@ -107,7 +121,8 @@ export function createCityLayer(map, {
     renderingMode: '3d',
 
     onAdd(_map, gl) {
-      renderer = new THREE.WebGLRenderer({ canvas: map.getCanvas(), context: gl, antialias: true });
+      // antialiasing is MapLibre's choice: it created the context
+      renderer = new THREE.WebGLRenderer({ canvas: map.getCanvas(), context: gl });
       renderer.autoClear = false;
       renderer.shadowMap.enabled = true;
       renderer.shadowMap.type = THREE.PCFShadowMap;
@@ -170,11 +185,9 @@ export function createCityLayer(map, {
       ground.position.x = cx;
       ground.position.y = cy;
 
-      const m = new THREE.Matrix4().fromArray(args.defaultProjectionData.mainMatrix);
-      const l = new THREE.Matrix4()
-        .makeTranslation(origin.x, origin.y, 0)
-        .scale(new THREE.Vector3(origin.scale, -origin.scale, origin.scale));
-      camera.projectionMatrix = m.multiply(l);
+      viewMatrix.fromArray(args.defaultProjectionData.mainMatrix);
+      localMatrix.makeTranslation(origin.x, origin.y, 0).scale(localScale.set(origin.scale, -origin.scale, origin.scale));
+      camera.projectionMatrix.copy(viewMatrix.multiply(localMatrix));
 
       // three.js divides diffuse light by PI, hence the large-looking intensities
       sun.intensity = 5.5 * layer.day;

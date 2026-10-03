@@ -4,6 +4,18 @@ Todas as mudanças relevantes do projeto. O formato segue o [Keep a Changelog](h
 
 Cada versão tem uma tag `vX.Y.Z` no git e uma página em [Releases](https://github.com/Jaimedsf/sombra-guide/releases). Vulnerabilidades corrigidas, quando houver, aparecem numa seção **Segurança** da versão, com o identificador CVE ou GHSA.
 
+## [1.2.1] - 2026-10-03
+
+### Alterado
+
+- Animações e giros do mapa mais leves. A bússola reaproveita o caminho do sol do dia em vez de recalculá-lo a cada quadro, e o escurecimento da noite virou uma camada sobre o mapa em vez de um filtro no canvas, que custava uma passada extra a cada quadro. A noite fica levemente azulada
+- O código do app (25 KB) vem separado das bibliotecas do mapa e do 3D, então uma versão nova só faz o navegador baixar de novo a parte que mudou
+- Testes de propriedade da malha dos prédios: paredes viradas para fora, telhado do tamanho exato da planta e pátios internos abertos
+
+### Corrigido
+
+- Contornos marcados com `hide_3d` no OpenStreetMap (prédios mapeados por partes) eram desenhados como um bloco a mais por cima das partes
+
 ## [1.2.0] - 2026-10-03
 
 ### Adicionado

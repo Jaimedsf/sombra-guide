@@ -32,6 +32,8 @@
 html, body { margin: 0; height: 100%; }
 body { font: 14px/1.45 var(--sans); color: var(--ink); background: #dcd8cf; overflow: hidden; }
 #map { position: absolute; inset: 0; }
+/* night tint over the map canvas; opacity set from the sun's altitude in main.js */
+.night-shade { position: absolute; inset: 0; pointer-events: none; background: rgb(12 14 34); opacity: 0; }
 button, input { font: inherit; color: inherit; }
 :focus-visible { outline: 2px solid var(--sun-deep); outline-offset: 2px; }
 
