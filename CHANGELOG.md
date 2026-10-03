@@ -6,8 +6,19 @@ Cada versão tem uma tag `vX.Y.Z` no git e uma página em [Releases](https://git
 
 ## [Não lançado]
 
+### Adicionado
+
+- Sugestões de endereço enquanto você digita, sem precisar clicar em "Buscar". As setas e o Esc navegam pela lista, e um toque fora fecha
+- A data e a hora escolhidas passam a ficar na URL (`?data=&hora=`), então um link copiado abre o mesmo momento. O botão "Agora" tira esses parâmetros
+
+### Alterado
+
+- A lista de resultados da busca flutua sobre o painel em vez de empurrar o conteúdo para baixo
+
 ### Corrigido
 
+- Em duas buscas seguidas, a resposta mais lenta podia substituir a lista da busca mais nova
+- `?data=` com uma data que não existe (por exemplo, mês 13) mostrava "undefined" no painel, e `?hora=12:75` era aceito. Valores inválidos agora são ignorados
 - Trocar entre "▶ Dia" e "▶ Ano" sem pausar deixava duas animações rodando ao mesmo tempo, e cada troca somava mais uma
 - Durante "▶ Ano", a data escolhida no controle de dia, nos atalhos ou no campo de data voltava no quadro seguinte
 - Em anos bissextos, o 31 de dezembro não aparecia no controle de dia do ano nem na animação do ano

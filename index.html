@@ -32,11 +32,14 @@
       <button class="sheet-toggle" id="sheet-toggle" type="button" aria-expanded="false" aria-controls="panel-more">Mais</button>
     </header>
 
-    <form class="search" id="search" role="search">
-      <input type="search" id="q" placeholder="Digite um endereço em Fortaleza" autocomplete="street-address" enterkeyhint="search" aria-label="Endereço">
-      <button class="btn" type="submit">Buscar</button>
-    </form>
-    <ul class="results" id="results" hidden></ul>
+    <!-- the results float over the panel below the field instead of pushing it down -->
+    <div class="search-box">
+      <form class="search" id="search" role="search">
+        <input type="search" id="q" placeholder="Digite um endereço em Fortaleza" autocomplete="off" enterkeyhint="search" aria-label="Endereço">
+        <button class="btn" type="submit">Buscar</button>
+      </form>
+      <ul class="results" id="results" hidden></ul>
+    </div>
 
     <section class="readout">
       <svg id="compass" viewBox="-60 -60 120 120" role="img" aria-label="Posição do sol no céu"></svg>

@@ -1,5 +1,6 @@
 :root {
   --panel: rgb(252 250 246 / 0.94);
+  --panel-solid: rgb(252 250 246);
   --ink: #1b1a24;
   --muted: #676473;
   --line: #e4dfd6;
@@ -15,6 +16,7 @@
 @media (prefers-color-scheme: dark) {
   :root {
     --panel: rgb(24 23 32 / 0.92);
+    --panel-solid: rgb(24 23 32);
     --ink: #efedf5;
     --muted: #a3a0b0;
     --line: #34323f;
@@ -60,7 +62,15 @@ h1 { margin: 0; font-size: 20px; font-weight: 700; letter-spacing: -0.01em; }
   flex: 1; min-width: 0; border: 1px solid var(--line); background: var(--chip);
   border-radius: 8px; padding: 7px 10px;
 }
-.results { list-style: none; margin: -4px 0 0; padding: 0; display: grid; gap: 2px; max-height: 180px; overflow: auto; }
+.search-box { position: relative; z-index: 3; }
+/* dropdown over the panel; --room (set in main.js) keeps it inside the panel's visible area */
+.results {
+  position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+  list-style: none; margin: 0; padding: 4px; display: grid; gap: 2px;
+  max-height: min(260px, var(--room, 260px)); overflow: auto; overscroll-behavior: contain;
+  background: var(--panel-solid); border: 1px solid var(--line); border-radius: 10px;
+  box-shadow: 0 12px 32px rgb(20 18 40 / 0.22);
+}
 .results button {
   width: 100%; text-align: left; border: 0; background: transparent; border-radius: 6px;
   padding: 6px 8px; font-size: 13px; cursor: pointer;
@@ -163,7 +173,6 @@ input[type="date"] {
   .row .btn { flex: 1; }
   .btn { min-height: 44px; padding: 0 14px; }
   .chip { min-height: 36px; padding: 0 12px; }
-  .results { max-height: 30vh; }
   .results button { min-height: 44px; }
 
   .readout { grid-template-columns: 64px 1fr; gap: 12px; }

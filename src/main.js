@@ -5,17 +5,15 @@ import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 import { createCityLayer } from './city3d.js';
 import extraBuildings from './extra-buildings.json';
 import { getPosition, getTimes } from 'suncalc';
-import { localNow, toUtc, toLocalMin, dayOfYear, daysInYear, fromDayOfYear } from './time.js';
+import { localNow, toUtc, toLocalMin, fmtMin, fmtDate, dayOfYear, daysInYear, fromDayOfYear } from './time.js';
 import { advance, createPlayer } from './play.js';
+import { parseMoment, momentSearch } from './url.js';
+import { findAddress, suggestAddress, resolveSuggestion, latestOnly } from './search.js';
 import './style.css';
 
 const START = [-38.4965, -3.7262];
-// Fortaleza metro area (xmin,ymin,xmax,ymax), used to keep address search local
-const SEARCH_BOX = '-38.70,-3.92,-38.35,-3.66';
 
 const $ = (id) => document.getElementById(id);
-const pad = (n) => String(n).padStart(2, '0');
-const fmtMin = (m) => `${pad(Math.floor(m / 60) % 24)}:${pad(Math.floor(m % 60))}`;
 const MONTHS = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
 const DIRS = ['norte', 'nordeste', 'leste', 'sudeste', 'sul', 'sudoeste', 'oeste', 'noroeste'];
 const dirName = (deg) => DIRS[Math.round((((deg % 360) + 360) % 360) / 45) % 8];
@@ -27,11 +25,8 @@ const setDayOfYear = (doy) => Object.assign(state, fromDayOfYear(state.y, doy));
 Object.assign(state, localNow());
 // optional ?data=2026-12-21&hora=16:30 opens a fixed moment instead of now
 {
-  const q = new URLSearchParams(location.search);
-  const [y, m, d] = (q.get('data') || '').split('-').map(Number);
-  if (y && m && d) Object.assign(state, { y, m, d, live: false });
-  const hora = /^(\d{1,2}):(\d{2})$/.exec(q.get('hora') || '');
-  if (hora && +hora[1] < 24) Object.assign(state, { min: +hora[1] * 60 + +hora[2], live: false });
+  const moment = parseMoment(location.search);
+  if (Object.keys(moment).length) Object.assign(state, moment, { live: false });
 }
 maplibregl.setWorkerUrl(workerUrl);
 
@@ -151,12 +146,24 @@ function render() {
   $('t-set').textContent = `pôr ${fmtMin(dayRange[1])}`;
   $('doy').max = daysInYear(state.y) - 1; // before value, or 31 Dec of a leap year gets clamped
   $('doy').value = dayOfYear(state);
-  $('date').value = `${state.y}-${pad(state.m)}-${pad(state.d)}`;
+  $('date').value = fmtDate(state);
   $('play-day').setAttribute('aria-pressed', state.playing === 'day');
   $('play-year').setAttribute('aria-pressed', state.playing === 'year');
   $('play-day').textContent = state.playing === 'day' ? '❚❚ Dia' : '▶ Dia';
   $('play-year').textContent = state.playing === 'year' ? '❚❚ Ano' : '▶ Ano';
   drawCompass(pos, times, [lng, lat]);
+  syncUrlSoon();
+}
+
+// keep the chosen moment in the URL (none in live mode), so a copied link opens it.
+// Debounced: while playing, render() runs every frame, and browsers limit replaceState calls.
+let urlTimer = 0;
+function syncUrlSoon() {
+  clearTimeout(urlTimer);
+  urlTimer = setTimeout(() => {
+    const search = momentSearch(location.search, state);
+    if (search !== location.search) history.replaceState(history.state, '', location.pathname + search + location.hash);
+  }, 400);
 }
 
 const manual = () => { state.live = false; };
@@ -173,93 +180,114 @@ document.querySelectorAll('.presets .chip').forEach((b) => b.addEventListener('c
   manual(); Object.assign(state, { m, d }); render();
 }));
 // ---------- address search ----------
-// Esri's World Geocoder knows Brazilian house numbers (OSM rarely has them in Fortaleza).
-// Anonymous use is allowed for searches whose results are not stored; Nominatim is the fallback.
-const PRECISION = {
-  PointAddress: 'número exato', Subaddress: 'número exato',
-  StreetAddress: 'número aproximado', StreetAddressExt: 'número aproximado',
-  StreetName: 'só a rua', StreetInt: 'cruzamento', POI: 'local',
-};
-async function searchEsri(q) {
-  const { lng, lat } = map.getCenter();
-  const url = 'https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates?'
-    + new URLSearchParams({
-      f: 'json', singleLine: q, countryCode: 'BRA', langCode: 'pt', maxLocations: '6',
-      outFields: 'Addr_type', searchExtent: SEARCH_BOX, location: `${lng},${lat}`,
-    });
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(res.status);
-  const data = await res.json();
-  if (data.error) throw new Error(data.error.message);
-  const seen = new Set();
-  return data.candidates
-    .filter((c) => c.score >= 75 && !seen.has(c.address) && seen.add(c.address))
-    .map((c) => ({
-      lng: c.location.x, lat: c.location.y, label: c.address,
-      precision: PRECISION[c.attributes.Addr_type] || 'região',
-      exact: /Address$|^Subaddress$/.test(c.attributes.Addr_type) && c.score >= 95,
-    }));
+// One search at a time, typed or submitted: a new one cancels the one still running,
+// so a late answer can't replace a newer list.
+const latest = latestOnly();
+const list = $('results');
+const TYPE_MIN_CHARS = 3;
+const TYPE_PAUSE_MS = 350;
+const NO_ANSWER = 'A busca não respondeu. Verifique a conexão e tente de novo.';
+let typing = 0;
+let marker = null;
+
+// the list floats over the panel: fit it to what is left of the panel below the field
+function openList() {
+  list.hidden = false;
+  const room = $('panel').getBoundingClientRect().bottom - list.getBoundingClientRect().top - 10;
+  list.style.setProperty('--room', `${Math.max(120, room)}px`);
 }
-async function searchNominatim(q) {
-  // west,north,east,south as Nominatim expects
-  const [w, s1, e, n] = SEARCH_BOX.split(',');
-  const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=6&countrycodes=br&accept-language=pt-BR&bounded=1&viewbox=${w},${n},${e},${s1}&q=${encodeURIComponent(q)}`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(res.status);
-  return (await res.json()).map((r) => ({
-    lng: +r.lon, lat: +r.lat,
-    label: r.display_name.replace(/, (Região Geográfica|Mesorregião|Microrregião|Região Metropolitana|Região Nordeste)[^,]*/g, '').replace(/, Brasil$/, ''),
-    precision: r.addresstype === 'road' ? 'só a rua' : r.addresstype === 'house' || r.addresstype === 'building' ? 'número exato' : 'local',
-    exact: r.addresstype === 'house' || r.addresstype === 'building',
+const msgItem = (text) => Object.assign(document.createElement('li'), { className: 'msg', textContent: text });
+function showMessage(text) {
+  openList();
+  list.replaceChildren(msgItem(text));
+}
+function showResults(items, pick, note) {
+  openList();
+  list.replaceChildren(...(note ? [msgItem(note)] : []), ...items.map((r) => {
+    const b = Object.assign(document.createElement('button'), { type: 'button', textContent: r.label });
+    if (r.precision) b.append(Object.assign(document.createElement('span'), { className: 'precision', textContent: r.precision }));
+    b.addEventListener('click', () => pick(r));
+    const li = document.createElement('li');
+    li.append(b);
+    return li;
   }));
 }
+function closeResults() {
+  clearTimeout(typing);
+  latest.cancel();
+  list.hidden = true;
+}
 
-let marker = null;
 function goTo(r) {
+  closeResults();
   marker?.remove();
   marker = new maplibregl.Marker({ color: '#c9770a' }).setLngLat([r.lng, r.lat]).addTo(map);
   map.flyTo({ center: [r.lng, r.lat], zoom: 17.5, pitch: 60, duration: 2200 });
-  $('results').hidden = true;
   $('q').blur(); // closes the phone keyboard so the map is visible
 }
+
+async function pickSuggestion(s) {
+  clearTimeout(typing);
+  $('q').value = s.label;
+  showMessage('Buscando…');
+  let found;
+  try { found = await latest((signal) => resolveSuggestion(s, map.getCenter(), signal)); } catch {
+    return showMessage(NO_ANSWER);
+  }
+  if (found === undefined) return; // a newer search owns the list now
+  if (found) goTo(found); else showMessage('Endereço não encontrado. Tente buscar de novo.');
+}
+
+// suggestions while typing, after a short pause
+$('q').addEventListener('input', () => {
+  clearTimeout(typing);
+  const q = $('q').value.trim();
+  if (q.length < TYPE_MIN_CHARS) return closeResults();
+  typing = setTimeout(async () => {
+    let found;
+    try { found = await latest((signal) => suggestAddress(q, map.getCenter(), signal)); } catch {
+      return; // stay quiet while typing; a submitted search reports errors
+    }
+    if (found?.length) showResults(found, pickSuggestion);
+    else if (found) list.hidden = true;
+  }, TYPE_PAUSE_MS);
+});
+
+// Enter or "Buscar": full search with precision tags, jumping straight to a single exact match
 $('search').addEventListener('submit', async (e) => {
   e.preventDefault();
+  clearTimeout(typing);
   const q = $('q').value.trim();
   if (!q) return;
-  const list = $('results');
-  list.hidden = false;
-  list.innerHTML = '<li class="msg">Buscando…</li>';
-  let found = [];
-  try { found = await searchEsri(q); } catch { /* fall back below */ }
-  if (!found.length) {
-    try { found = await searchNominatim(q); } catch {
-      list.innerHTML = '<li class="msg">A busca não respondeu. Verifique a conexão e tente de novo.</li>';
-      return;
-    }
+  showMessage('Buscando…');
+  let found;
+  try { found = await latest((signal) => findAddress(q, map.getCenter(), signal)); } catch {
+    return showMessage(NO_ANSWER);
   }
-  if (!found.length) {
-    list.innerHTML = '<li class="msg">Nada encontrado em Fortaleza. Tente "rua, número, bairro" ou o nome de um lugar.</li>';
-    return;
-  }
+  if (!found) return; // a newer search owns the list now
+  if (!found.length) return showMessage('Nada encontrado em Fortaleza. Tente "rua, número, bairro" ou o nome de um lugar.');
   if (found[0].exact && found.filter((r) => r.exact).length === 1) return goTo(found[0]);
-  list.innerHTML = '';
-  if (/\d/.test(q) && !found.some((r) => r.exact)) {
-    list.insertAdjacentHTML('beforeend', '<li class="msg">Número não encontrado; mostrando a rua. Tente incluir o bairro.</li>');
-  }
-  found.forEach((r) => {
-    const li = document.createElement('li');
-    const b = document.createElement('button');
-    b.type = 'button';
-    b.textContent = r.label;
-    const tag = document.createElement('span');
-    tag.className = 'precision';
-    tag.textContent = r.precision;
-    b.appendChild(tag);
-    b.addEventListener('click', () => goTo(r));
-    li.appendChild(b);
-    list.appendChild(li);
-  });
+  showResults(found, goTo, /\d/.test(q) && !found.some((r) => r.exact) ? 'Número não encontrado; mostrando a rua. Tente incluir o bairro.' : '');
 });
+
+// arrows move between the field and the results; Esc closes them
+function navigate(e) {
+  if (list.hidden) return;
+  const items = [...list.querySelectorAll('button')];
+  if (e.key === 'Escape') {
+    e.preventDefault(); // a search field would also clear its text
+    closeResults();
+    $('q').focus();
+  } else if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && items.length) {
+    e.preventDefault();
+    const i = items.indexOf(document.activeElement) + (e.key === 'ArrowDown' ? 1 : -1);
+    (i < 0 ? $('q') : items[Math.min(i, items.length - 1)]).focus();
+  }
+}
+$('q').addEventListener('keydown', navigate);
+list.addEventListener('keydown', navigate);
+// it covers part of the panel, so a tap anywhere else closes it
+document.addEventListener('pointerdown', (e) => { if (!list.hidden && !e.target.closest('.search-box')) closeResults(); });
 // map events can fire every frame; redraw the panel at most once per frame
 let queued = false;
 const renderSoon = () => { if (!queued) { queued = true; requestAnimationFrame(() => { queued = false; render(); }); } };
