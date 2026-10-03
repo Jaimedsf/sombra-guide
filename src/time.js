@@ -13,3 +13,12 @@ export const toLocalMin = (date) => {
   const t = new Date(date.getTime() + UTC_OFFSET_MIN * 60000);
   return t.getUTCHours() * 60 + t.getUTCMinutes() + t.getUTCSeconds() / 60;
 };
+
+export const daysInYear = (y) => ((y % 4 === 0 && y % 100 !== 0) || y % 400 === 0 ? 366 : 365);
+/** 0 for 1 Jan, up to daysInYear(y) - 1 for 31 Dec. */
+export const dayOfYear = ({ y, m, d }) => Math.round((Date.UTC(y, m - 1, d) - Date.UTC(y, 0, 1)) / 86400000);
+/** Inverse of dayOfYear: month and day of the `doy`-th day of year `y`. */
+export function fromDayOfYear(y, doy) {
+  const t = new Date(Date.UTC(y, 0, 1) + doy * 86400000);
+  return { m: t.getUTCMonth() + 1, d: t.getUTCDate() };
+}
