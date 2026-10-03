@@ -128,7 +128,6 @@ input[type="date"] {
   font-size: 12.5px; cursor: pointer;
 }
 .chip:hover, .btn:hover { border-color: var(--sun-deep); }
-.credit { margin: 0; font-size: 11px; color: var(--muted); }
 .more { display: grid; gap: 12px; }
 .sheet-toggle { display: none; }
 
@@ -142,10 +141,6 @@ input[type="date"] {
 }
 .cam button.wide { grid-column: span 2; font-size: 13px; }
 .cam button:hover { border-color: var(--sun-deep); }
-.cam-hint {
-  grid-column: span 2; margin: 0; width: 86px; font-size: 10.5px; line-height: 1.3; color: var(--muted);
-  background: var(--panel); border-radius: 8px; padding: 6px;
-}
 
 /* ---------- phones: bottom sheet, compact controls, 44px touch targets ---------- */
 @media (max-width: 560px) {
@@ -189,7 +184,6 @@ input[type="date"] {
   .cam { top: 64px; bottom: auto; right: 8px; grid-template-columns: repeat(3, 40px); gap: 5px; }
   .cam button { height: 40px; font-size: 16px; }
   .cam button.wide { grid-column: span 1; font-size: 11px; }
-  .cam-hint { display: none; }
   .maplibregl-ctrl-zoom-in, .maplibregl-ctrl-zoom-out { display: none !important; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }

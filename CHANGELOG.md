@@ -4,6 +4,12 @@ Todas as mudanças relevantes do projeto. O formato segue o [Keep a Changelog](h
 
 Cada versão tem uma tag `vX.Y.Z` no git e uma página em [Releases](https://github.com/Jaimedsf/sombra-guide/releases). Vulnerabilidades corrigidas, quando houver, aparecem numa seção **Segurança** da versão, com o identificador CVE ou GHSA.
 
+## [1.1.1] - 2026-10-03
+
+### Removido
+
+- A dica de como mexer na câmera, ao lado dos botões, e a linha de créditos no fim do painel. Os créditos do mapa e da busca (Esri e Nominatim) ficam na atribuição do mapa, no canto inferior direito
+
 ## [1.1.0] - 2026-10-03
 
 ### Adicionado

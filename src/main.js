@@ -41,7 +41,8 @@ const map = new maplibregl.Map({
   pitch: 60,
   bearing: -25,
   maxPitch: 78,
-  attributionControl: { compact: true },
+  // the address search providers are credited next to the map's own data credits
+  attributionControl: { compact: true, customAttribution: 'Busca: <a href="https://www.esri.com" target="_blank" rel="noopener">Powered by Esri</a> · Nominatim' },
   hash: true, // view lives in the URL, so it can be shared
   pixelRatio: Math.min(devicePixelRatio, 2), // 3x screens cost 2.25x the pixels for little gain
 });
