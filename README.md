@@ -138,9 +138,10 @@ Quando o prédio for mapeado no OSM, apague a entrada do arquivo. Se ficar, ele 
 - **CI**: cada push e PR roda `npm audit`, os testes (`npm test`, com testes de propriedade em fast-check) e o build antes de publicar
 - Actions fixadas por SHA e token do Actions somente leitura por padrão
 - A `main` não aceita force push nem pode ser apagada
+- Releases automáticas: quando um push na `main` muda a versão do `package.json`, o workflow `release.yml` cria a tag e a release, com as notas tiradas do [CHANGELOG.md](CHANGELOG.md)
 - Cada release traz o site pronto (`sombra-guide-vX.Y.Z.tar.gz`) assinado com Sigstore. Para verificar:
   ```sh
-  cosign verify-blob sombra-guide-v1.0.0.tar.gz --bundle sombra-guide-v1.0.0.tar.gz.sigstore \
+  cosign verify-blob sombra-guide-v1.1.0.tar.gz --bundle sombra-guide-v1.1.0.tar.gz.sigstore \
     --certificate-identity-regexp '^https://github.com/Jaimedsf/sombra-guide/\.github/workflows/release\.yml@' \
     --certificate-oidc-issuer https://token.actions.githubusercontent.com
   ```

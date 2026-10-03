@@ -1,8 +1,14 @@
-# Attach the built site to each GitHub release, signed with Sigstore (keyless, via the
-# workflow's OIDC identity), so users and OpenSSF Scorecard can verify where it came from.
-name: Release assets
+# Releases are automatic: a push to main that changes the version in package.json publishes
+# vX.Y.Z, with that version's CHANGELOG.md section as the notes and the built site attached,
+# signed with Sigstore (keyless, via the workflow's OIDC identity) so users and OpenSSF
+# Scorecard can verify where it came from. A release published by hand, or a manual run
+# with an existing tag, (re)builds and signs the assets of that release.
+name: Release
 
 on:
+  push:
+    branches: [main]
+    paths: [package.json]
   release:
     types: [published]
   workflow_dispatch:
@@ -14,18 +20,53 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 jobs:
-  assets:
+  plan:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write # upload release assets
-      id-token: write # Sigstore keyless signing
-    env:
-      TAG: ${{ github.event.release.tag_name || inputs.tag }}
+    outputs:
+      tag: ${{ steps.plan.outputs.tag }}
+      mode: ${{ steps.plan.outputs.mode }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ env.TAG }}
+          persist-credentials: false
+      # mode: new (publish this version), assets (rebuild an existing release) or none
+      - id: plan
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GIVEN_TAG: ${{ github.event.release.tag_name || inputs.tag }}
+        run: |
+          if [ -n "$GIVEN_TAG" ]; then
+            tag="$GIVEN_TAG" mode=assets
+          else
+            tag="v$(jq -r .version package.json)" mode=new
+            if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$tag" --silent 2>/dev/null; then
+              echo "$tag already exists, nothing to release"
+              mode=none
+            fi
+          fi
+          [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::not a vX.Y.Z tag: $tag"; exit 1; }
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "mode=$mode" >> "$GITHUB_OUTPUT"
+
+  release:
+    needs: plan
+    if: needs.plan.outputs.mode != 'none'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # create the release and upload its assets
+      id-token: write # Sigstore keyless signing
+    env:
+      TAG: ${{ needs.plan.outputs.tag }}
+      MODE: ${{ needs.plan.outputs.mode }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.plan.outputs.mode == 'new' && github.sha || needs.plan.outputs.tag }}
           persist-credentials: false
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
@@ -34,12 +75,25 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build
+      - name: Release notes from CHANGELOG.md
+        if: env.MODE == 'new'
+        run: |
+          awk -v head="## [${TAG#v}]" 'index($0, head) == 1 { on = 1; next } on && /^## \[/ { exit } on' CHANGELOG.md \
+            | sed '/./,$!d' > notes.md
+          grep -q '[^[:space:]]' notes.md || { echo "::error::CHANGELOG.md has no section for ${TAG#v}"; exit 1; }
+          printf '\nSite: %s\n' "$(jq -r .homepage package.json)" >> notes.md
       - name: Package
         run: tar -czf "sombra-guide-$TAG.tar.gz" -C dist .
       - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
       - name: Sign
         run: cosign sign-blob --yes --bundle "sombra-guide-$TAG.tar.gz.sigstore" "sombra-guide-$TAG.tar.gz"
-      - name: Upload to release
+      - name: Publish
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload "$TAG" "sombra-guide-$TAG.tar.gz" "sombra-guide-$TAG.tar.gz.sigstore" --clobber -R "$GITHUB_REPOSITORY"
+        run: |
+          files=("sombra-guide-$TAG.tar.gz" "sombra-guide-$TAG.tar.gz.sigstore")
+          if [ "$MODE" = new ]; then
+            gh release create "$TAG" "${files[@]}" --target "$GITHUB_SHA" --title "$TAG" --notes-file notes.md -R "$GITHUB_REPOSITORY"
+          else
+            gh release upload "$TAG" "${files[@]}" --clobber -R "$GITHUB_REPOSITORY"
+          fi

@@ -4,12 +4,13 @@ Todas as mudanças relevantes do projeto. O formato segue o [Keep a Changelog](h
 
 Cada versão tem uma tag `vX.Y.Z` no git e uma página em [Releases](https://github.com/Jaimedsf/sombra-guide/releases). Vulnerabilidades corrigidas, quando houver, aparecem numa seção **Segurança** da versão, com o identificador CVE ou GHSA.
 
-## [Não lançado]
+## [1.1.0] - 2026-10-03
 
 ### Adicionado
 
 - Sugestões de endereço enquanto você digita, sem precisar clicar em "Buscar". As setas e o Esc navegam pela lista, e um toque fora fecha
 - A data e a hora escolhidas passam a ficar na URL (`?data=&hora=`), então um link copiado abre o mesmo momento. O botão "Agora" tira esses parâmetros
+- Releases automáticas: um push na `main` que muda a versão do `package.json` cria a tag e a release, com as notas deste arquivo e o site assinado com Sigstore
 
 ### Alterado
 
