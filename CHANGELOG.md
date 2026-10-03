@@ -4,6 +4,16 @@ Todas as mudanças relevantes do projeto. O formato segue o [Keep a Changelog](h
 
 Cada versão tem uma tag `vX.Y.Z` no git e uma página em [Releases](https://github.com/Jaimedsf/sombra-guide/releases). Vulnerabilidades corrigidas, quando houver, aparecem numa seção **Segurança** da versão, com o identificador CVE ou GHSA.
 
+## [Não lançado]
+
+### Corrigido
+
+- Trocar entre "▶ Dia" e "▶ Ano" sem pausar deixava duas animações rodando ao mesmo tempo, e cada troca somava mais uma
+- Durante "▶ Ano", a data escolhida no controle de dia, nos atalhos ou no campo de data voltava no quadro seguinte
+- Em anos bissextos, o 31 de dezembro não aparecia no controle de dia do ano nem na animação do ano
+- `npm test` no Windows não rodava os testes de propriedade e passava com 0 testes
+- A checagem do sol de junho em `check.mjs` não conferia a altura quando o azimute ficava perto de 360°
+
 ## [1.0.0] - 2026-09-28
 
 Primeira versão pública.

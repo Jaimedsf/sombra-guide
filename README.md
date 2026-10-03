@@ -72,7 +72,7 @@ OpenFreeMap (tiles vetoriais do OSM) ──► MapLibre GL (mapa base)
 
 ## Rodar localmente
 
-Requer Node.js 20 ou mais recente.
+Requer Node.js 20.19+ ou 22.12+ (mínimo do Vite 8).
 
 ```sh
 npm install
@@ -90,7 +90,8 @@ Não abra o `index.html` direto no navegador. O projeto usa o Vite para resolver
 index.html          interface (painel, busca, controles de câmera)
 src/main.js         mapa, estado de data e hora, painel, busca, animações
 src/city3d.js       camada three.js: prédios, luz solar e sombras
-src/time.js         conversões para o horário de Fortaleza
+src/time.js         conversões para o horário de Fortaleza e dia do ano
+src/play.js         animações de um dia e de um ano
 src/extra-buildings.json  prédios que ainda não estão no OSM (GeoJSON com render_height)
 src/style.css       estilos
 check.mjs           checagem rápida de fuso e posição do sol

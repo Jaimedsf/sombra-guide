@@ -5,7 +5,8 @@ import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 import { createCityLayer } from './city3d.js';
 import extraBuildings from './extra-buildings.json';
 import { getPosition, getTimes } from 'suncalc';
-import { localNow, toUtc, toLocalMin } from './time.js';
+import { localNow, toUtc, toLocalMin, dayOfYear, daysInYear, fromDayOfYear } from './time.js';
+import { advance, createPlayer } from './play.js';
 import './style.css';
 
 const START = [-38.4965, -3.7262];
@@ -22,12 +23,7 @@ const dirName = (deg) => DIRS[Math.round((((deg % 360) + 360) % 360) / 45) % 8];
 // ---------- time state (always Fortaleza local) ----------
 const state = { y: 2026, m: 1, d: 1, min: 720, live: true, playing: null };
 
-const dayOfYear = ({ y, m, d }) => Math.round((Date.UTC(y, m - 1, d) - Date.UTC(y, 0, 1)) / 86400000);
-function setDayOfYear(doy) {
-  const t = new Date(Date.UTC(state.y, 0, 1) + doy * 86400000);
-  state.m = t.getUTCMonth() + 1;
-  state.d = t.getUTCDate();
-}
+const setDayOfYear = (doy) => Object.assign(state, fromDayOfYear(state.y, doy));
 Object.assign(state, localNow());
 // optional ?data=2026-12-21&hora=16:30 opens a fixed moment instead of now
 {
@@ -153,6 +149,7 @@ function render() {
   $('time').value = Math.floor(state.min);
   $('t-rise').textContent = `nascer ${fmtMin(dayRange[0])}`;
   $('t-set').textContent = `pôr ${fmtMin(dayRange[1])}`;
+  $('doy').max = daysInYear(state.y) - 1; // before value, or 31 Dec of a leap year gets clamped
   $('doy').value = dayOfYear(state);
   $('date').value = `${state.y}-${pad(state.m)}-${pad(state.d)}`;
   $('play-day').setAttribute('aria-pressed', state.playing === 'day');
@@ -170,7 +167,7 @@ $('date').addEventListener('change', (e) => {
   if (!y) return;
   manual(); Object.assign(state, { y, m, d }); render();
 });
-$('now').addEventListener('click', () => { state.playing = null; state.live = true; Object.assign(state, localNow()); render(); });
+$('now').addEventListener('click', () => { state.playing = null; player.stop(); state.live = true; Object.assign(state, localNow()); render(); });
 document.querySelectorAll('.presets .chip').forEach((b) => b.addEventListener('click', () => {
   const [m, d] = b.dataset.md.split('-').map(Number);
   manual(); Object.assign(state, { m, d }); render();
@@ -287,28 +284,12 @@ const CAM = {
 document.querySelectorAll('[data-cam]').forEach((b) =>
   b.addEventListener('click', () => map.easeTo({ ...CAM[b.dataset.cam](), duration: 500 })));
 
-// play: a day passes in ~20 s, a year in ~12 s
-let last = 0;
-function frame(ts) {
-  if (!state.playing) return;
-  const dt = last ? Math.min(0.1, (ts - last) / 1000) : 0;
-  last = ts;
-  if (state.playing === 'day') {
-    state.min += dt * 60;
-    if (state.min >= dayRange[1]) state.min = dayRange[0];
-  } else {
-    state._doyF = ((state._doyF ?? dayOfYear(state)) + dt * 30) % 365;
-    setDayOfYear(Math.floor(state._doyF));
-  }
-  render();
-  requestAnimationFrame(frame);
-}
+const player = createPlayer((dt) => { advance(state, dt, dayRange); render(); });
 function togglePlay(kind) {
   manual();
   state.playing = state.playing === kind ? null : kind;
-  state._doyF = undefined;
-  last = 0;
-  if (state.playing) requestAnimationFrame(frame);
+  state.doyFrac = 0;
+  if (state.playing) player.start(); else player.stop();
   render();
 }
 $('play-day').addEventListener('click', () => togglePlay('day'));
