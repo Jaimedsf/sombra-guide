@@ -151,7 +151,11 @@ input[type="date"] {
 }
 .chip:hover, .btn:hover { border-color: var(--sun-deep); }
 .more { display: grid; gap: 12px; }
-.sheet-toggle { display: none; }
+/* "Mais" / "Menos" folds the lower part of the panel, on any screen */
+.panel:not(.open) .more { display: none; }
+.sheet-toggle { gap: 6px; }
+.sheet-toggle::after { content: "▴"; font-size: 12px; }
+.panel.open .sheet-toggle::after { content: "▾"; }
 
 .cam {
   position: absolute; z-index: 2; right: 10px; bottom: calc(34px + env(safe-area-inset-bottom, 0px));
@@ -172,17 +176,9 @@ input[type="date"] {
     gap: 10px; border-radius: 16px 16px 0 0; border-width: 1px 0 0;
     overscroll-behavior: contain;
   }
-  .panel:not(.open) .more { display: none; }
   .head { align-items: center; }
   h1 { font-size: 17px; }
   .sub { display: none; }
-  .sheet-toggle {
-    display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 14px;
-    border: 1px solid var(--line); background: var(--chip); border-radius: 999px;
-    font-weight: 600; font-size: 13px; cursor: pointer;
-  }
-  .sheet-toggle::after { content: "▴"; font-size: 12px; }
-  .panel.open .sheet-toggle::after { content: "▾"; }
   .pill { min-height: 36px; }
 
   /* 16px inputs stop iOS from zooming the page on focus */

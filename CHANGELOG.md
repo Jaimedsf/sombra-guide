@@ -4,6 +4,18 @@ Todas as mudanças relevantes do projeto. O formato segue o [Keep a Changelog](h
 
 Cada versão tem uma tag `vX.Y.Z` no git e uma página em [Releases](https://github.com/Jaimedsf/sombra-guide/releases). Vulnerabilidades corrigidas, quando houver, aparecem numa seção **Segurança** da versão, com o identificador CVE ou GHSA.
 
+## [1.3.0] - 2026-10-03
+
+### Adicionado
+
+- No computador, o painel também recolhe com "Menos" e volta com "Mais", deixando mais mapa à vista. A escolha fica salva no aparelho
+- Prévia do link (Open Graph) ao compartilhar em conversas e redes sociais, e cor da barra do navegador no celular
+
+### Alterado
+
+- As fontes vêm do próprio site, sem chamadas ao Google Fonts, que recebia o endereço IP de cada visitante
+- O site publicado tem uma política de segurança de conteúdo (CSP): scripts, estilos e fontes só do próprio site, e conexões só com os tiles do mapa e os serviços de busca
+
 ## [1.2.1] - 2026-10-03
 
 ### Alterado

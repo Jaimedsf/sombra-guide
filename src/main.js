@@ -11,6 +11,13 @@ import { daylight, nextSunrise } from './sun.js';
 import { parseMoment, momentSearch } from './url.js';
 import { findAddress, suggestAddress, resolveSuggestion, latestOnly } from './search.js';
 import { shareLink } from './share.js';
+// fonts served with the site: no request to a third party (privacy) and a strict CSP
+import '@fontsource/instrument-sans/400.css';
+import '@fontsource/instrument-sans/500.css';
+import '@fontsource/instrument-sans/600.css';
+import '@fontsource/instrument-sans/700.css';
+import '@fontsource/jetbrains-mono/500.css';
+import '@fontsource/jetbrains-mono/700.css';
 import './style.css';
 
 const START = [-38.4965, -3.7262];
@@ -397,11 +404,21 @@ const renderSoon = () => { if (!queued) { queued = true; requestAnimationFrame((
 map.on('moveend', renderSoon);
 map.on('rotate', renderSoon);
 
-// phones: the panel is a bottom sheet; "Mais" reveals the rest
-$('sheet-toggle').addEventListener('click', () => {
-  const open = $('panel').classList.toggle('open');
+// the lower part of the panel folds away ("Mais" / "Menos"): open by default on large
+// screens, folded on phones (a bottom sheet), and the choice is remembered on this device
+const PANEL_KEY = `panel-open-${PHONE ? 'phone' : 'desktop'}`;
+function setPanelOpen(open) {
+  $('panel').classList.toggle('open', open);
   $('sheet-toggle').setAttribute('aria-expanded', open);
   $('sheet-toggle').textContent = open ? 'Menos' : 'Mais';
+}
+let savedOpen = null;
+try { savedOpen = localStorage.getItem(PANEL_KEY); } catch { /* storage blocked: use the default */ }
+setPanelOpen(savedOpen === null ? !PHONE : savedOpen === 'true');
+$('sheet-toggle').addEventListener('click', () => {
+  const open = !$('panel').classList.contains('open');
+  setPanelOpen(open);
+  try { localStorage.setItem(PANEL_KEY, open); } catch { /* not remembered, still works */ }
 });
 
 const CAM = {

@@ -131,11 +131,13 @@ Quando o prédio for mapeado no OSM, apague a entrada do arquivo. Se ficar, ele 
 - Tiles e estilo: [OpenFreeMap](https://openfreemap.org)
 - Busca de endereço: [Esri ArcGIS World Geocoder](https://developers.arcgis.com/rest/geocode/), que conhece os números das casas em Fortaleza. É usado sem chave e sem guardar resultados, como a Esri permite para buscas pontuais. As sugestões ao digitar usam o endpoint `suggest`, feito pela Esri para autocompletar. O [Nominatim](https://nominatim.org) fica de reserva, com uma requisição por busca enviada e nunca ao digitar, conforme a [política de uso](https://operations.osmfoundation.org/policies/nominatim/)
 - Bibliotecas: [MapLibre GL JS](https://maplibre.org), [three.js](https://threejs.org), [SunCalc](https://github.com/mourner/suncalc), [Vite](https://vite.dev)
+- Fontes: [Instrument Sans](https://fonts.google.com/specimen/Instrument+Sans) e [JetBrains Mono](https://www.jetbrains.com/lp/mono/), sob a licença OFL, servidas pelo próprio site via [Fontsource](https://fontsource.org)
 
 ## Segurança e qualidade
 
 - **CodeQL** (`.github/workflows/codeql.yml`): análise estática do JavaScript e dos workflows a cada push, PR e toda semana, com as regras de segurança estendidas e as de qualidade de código
 - **Dependabot**: alertas de vulnerabilidade, PRs automáticos de correção e atualização semanal das dependências npm e das GitHub Actions
+- **Content Security Policy** no site publicado: scripts, estilos e fontes só do próprio site, e conexões só com os tiles do mapa e os dois serviços de busca. Nenhuma requisição vai a terceiros além desses, nem para fontes
 - **Secret scanning** com bloqueio no push: impede subir chaves e tokens por engano
 - **OpenSSF Scorecard**: nota de segurança da cadeia de suprimentos, recalculada toda semana (selo acima)
 - **CI**: cada push e PR roda `npm audit`, os testes (`npm test`, com testes de propriedade em fast-check) e o build antes de publicar
