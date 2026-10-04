@@ -110,9 +110,22 @@ export function createCityLayer(map, {
     geom.setAttribute('normal', new THREE.Float32BufferAttribute(nrm, 3));
     buildings.geometry.dispose();
     buildings.geometry = geom;
-    // right after a flight the new tiles may still be parsing: stay dirty and retry
-    dirty = features.length === 0;
+    // right after a flight the new tiles may still be parsing: stay dirty and retry (the
+    // `extra` buildings are always there, so only the tiles' own features count)
+    dirty = all.length === 0;
     map.triggerRepaint();
+  }
+
+  // rebuild shortly after building tiles arrive or the view moves away from the built area
+  let timer = 0, listening = false;
+  const schedule = () => { clearTimeout(timer); timer = setTimeout(update, 350); };
+  function update() {
+    const visible = map.getZoom() >= MIN_ZOOM - 0.5;
+    buildings.visible = ground.visible = visible;
+    if (!visible) return map.triggerRepaint();
+    const c = map.getCenter();
+    const moved = !origin || Math.hypot(...toLocal(c.lng, c.lat)) > radius / 3;
+    if (dirty || moved) rebuild();
   }
 
   const layer = {
@@ -120,7 +133,11 @@ export function createCityLayer(map, {
     type: 'custom',
     renderingMode: '3d',
 
+    // Runs again when the layer is re-added after a lost WebGL context: every GL object is
+    // created anew for the new context, and the mesh rebuilt into it.
     onAdd(_map, gl) {
+      origin = null;
+      dirty = true;
       // antialiasing is MapLibre's choice: it created the context
       renderer = new THREE.WebGLRenderer({ canvas: map.getCanvas(), context: gl });
       renderer.autoClear = false;
@@ -158,20 +175,12 @@ export function createCityLayer(map, {
       ground.frustumCulled = false;
       scene.add(ground);
 
-      // rebuild shortly after building tiles arrive or the view moves away from the built area
-      let timer = 0;
-      const schedule = () => { clearTimeout(timer); timer = setTimeout(update, 350); };
-      const update = () => {
-        const visible = map.getZoom() >= MIN_ZOOM - 0.5;
-        buildings.visible = ground.visible = visible;
-        if (!visible) return map.triggerRepaint();
-        const c = map.getCenter();
-        const moved = !origin || Math.hypot(...toLocal(c.lng, c.lat)) > radius / 3;
-        if (dirty || moved) rebuild();
-      };
-      map.on('sourcedata', (e) => { if (e.sourceId === sourceId && e.tile) { dirty = true; schedule(); } });
-      map.on('moveend', schedule);
-      map.on('idle', schedule); // safety net once every tile has settled
+      if (!listening) { // map events outlive the GL context: subscribe once
+        listening = true;
+        map.on('sourcedata', (e) => { if (e.sourceId === sourceId && e.tile) { dirty = true; schedule(); } });
+        map.on('moveend', schedule);
+        map.on('idle', schedule); // safety net once every tile has settled
+      }
       schedule();
     },
 

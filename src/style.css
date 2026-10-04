@@ -55,9 +55,8 @@ button, input { font: inherit; color: inherit; }
   box-shadow: 0 12px 40px rgb(20 18 40 / 0.18);
 }
 
-.head { display: flex; justify-content: space-between; align-items: start; gap: 12px; }
+.head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 h1 { margin: 0; font-size: 20px; font-weight: 700; letter-spacing: -0.01em; }
-.sub { margin: 2px 0 0; color: var(--muted); font-size: 12.5px; }
 .head-actions { display: flex; align-items: center; gap: 8px; }
 .pill {
   display: inline-flex; align-items: center; min-height: 32px; padding: 0 12px; white-space: nowrap;
@@ -176,9 +175,7 @@ input[type="date"] {
     gap: 10px; border-radius: 16px 16px 0 0; border-width: 1px 0 0;
     overscroll-behavior: contain;
   }
-  .head { align-items: center; }
   h1 { font-size: 17px; }
-  .sub { display: none; }
   .pill { min-height: 36px; }
 
   /* 16px inputs stop iOS from zooming the page on focus */

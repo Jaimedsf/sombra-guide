@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import fc from 'fast-check';
 import { getPosition, getTimes } from 'suncalc';
 import { toUtc, toLocalMin } from '../src/time.js';
-import { daylight, nextSunrise } from '../src/sun.js';
+import { daylight, nextSunrise, sunPath } from '../src/sun.js';
 
 const LAT = -3.7262, LNG = -38.4965; // Fortaleza (Meireles)
 
@@ -56,20 +56,62 @@ test('sunrise and sunset are in the morning and late afternoon, local time', () 
   }));
 });
 
+const dateAfter = (y, m, d, days) => {
+  const t = new Date(Date.UTC(y, m - 1, d + days));
+  return { y: t.getUTCFullYear(), m: t.getUTCMonth() + 1, d: t.getUTCDate() };
+};
+
 test('after sunset, the next sunrise is the next day\'s, rounded like the "Nascer" card', () => {
   fc.assert(fc.property(day, fc.integer({ min: 17 * 60, max: 1439 }), ({ y, m, d }, min) => {
     fc.pre(min > daylight(y, m, d, LAT, LNG)[1]);
-    assert.deepEqual(nextSunrise({ y, m, d, min }, LAT, LNG), { min: daylight(y, m, d + 1, LAT, LNG)[0], tomorrow: true });
+    assert.deepEqual(nextSunrise({ y, m, d, min }, LAT, LNG), { ...dateAfter(y, m, d, 1), min: daylight(y, m, d + 1, LAT, LNG)[0], days: 1 });
   }));
 });
 
 test('before dawn, the next sunrise is the same day\'s', () => {
   fc.assert(fc.property(day, fc.integer({ min: 0, max: 299 }), ({ y, m, d }, min) => {
-    assert.deepEqual(nextSunrise({ y, m, d, min }, LAT, LNG), { min: daylight(y, m, d, LAT, LNG)[0], tomorrow: false });
+    assert.deepEqual(nextSunrise({ y, m, d, min }, LAT, LNG), { y, m, d, min: daylight(y, m, d, LAT, LNG)[0], days: 0 });
   }));
 });
 
 test('the night of 31 Dec points to the sunrise of 1 Jan', () => {
   const next = nextSunrise({ y: 2026, m: 12, d: 31, min: 22 * 60 }, LAT, LNG);
-  assert.deepEqual(next, { min: daylight(2027, 1, 1, LAT, LNG)[0], tomorrow: true });
+  assert.deepEqual(next, { y: 2027, m: 1, d: 1, min: daylight(2027, 1, 1, LAT, LNG)[0], days: 1 });
+});
+
+// The map can be dragged anywhere and "Minha localização" can be anywhere: the panel must cope
+// with polar day and night and with places whose day runs past midnight in Fortaleza's clock.
+const anywhere = fc.record({ lat: fc.double({ min: -89.9, max: 89.9, noNaN: true }), lng: fc.double({ min: -180, max: 180, noNaN: true }) });
+
+test('anywhere on Earth, daylight is one span of the day or null', () => {
+  fc.assert(fc.property(day, anywhere, ({ y, m, d }, { lat, lng }) => {
+    const light = daylight(y, m, d, lat, lng);
+    if (light) assert.ok(light[0] >= 0 && light[0] < light[1] && light[1] <= 1439, JSON.stringify(light));
+  }));
+});
+
+test('anywhere on Earth, the next sunrise is a real minute ahead, or none within a year', () => {
+  fc.assert(fc.property(day, minute, anywhere, ({ y, m, d }, min, { lat, lng }) => {
+    const next = nextSunrise({ y, m, d, min }, lat, lng);
+    if (!next) return;
+    assert.ok(next.min >= 0 && next.min <= 1439 && next.days >= 0 && next.days <= 371, JSON.stringify(next));
+    assert.deepEqual(dateAfter(y, m, d, next.days), { y: next.y, m: next.m, d: next.d });
+  }), { numRuns: 60 });
+});
+
+test('anywhere on Earth, the compass path only has the sun above the horizon', () => {
+  fc.assert(fc.property(day, anywhere, ({ y, m, d }, { lat, lng }) => {
+    for (const [az, alt] of sunPath(y, m, d, lat, lng)) assert.ok(az >= 0 && az <= 360 && alt > -1, `${az} ${alt}`);
+  }), { numRuns: 60 });
+});
+
+test('Svalbard: midnight sun in June, polar night in December', () => {
+  const [lat, lng] = [78.22, 15.65];
+  assert.equal(daylight(2026, 6, 21, lat, lng), null);
+  const june = sunPath(2026, 6, 21, lat, lng);
+  assert.ok(june.length >= 144 && june.every(([, alt]) => alt > 0), 'sun up all day, all the way round');
+  assert.equal(daylight(2026, 12, 21, lat, lng), null);
+  assert.deepEqual(sunPath(2026, 12, 21, lat, lng), []);
+  const next = nextSunrise({ y: 2026, m: 12, d: 21, min: 720 }, lat, lng);
+  assert.ok(next.days > 30 && next.days < 90 && next.y === 2027 && next.m === 2, JSON.stringify(next));
 });

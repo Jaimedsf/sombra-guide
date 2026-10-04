@@ -4,6 +4,20 @@ Todas as mudanças relevantes do projeto. O formato segue o [Keep a Changelog](h
 
 Cada versão tem uma tag `vX.Y.Z` no git e uma página em [Releases](https://github.com/Jaimedsf/sombra-guide/releases). Vulnerabilidades corrigidas, quando houver, aparecem numa seção **Segurança** da versão, com o identificador CVE ou GHSA.
 
+## [1.3.1] - 2026-10-03
+
+### Corrigido
+
+- Quando o navegador perdia o contexto gráfico (comum no celular ao trocar de app e voltar), o mapa voltava sem os prédios 3D e sem as sombras até recarregar a página. Agora a camada volta sozinha
+- Em latitudes polares, no sol da meia-noite ou na noite polar, o painel travava: relógio, barra de hora e bússola paravam de responder. Agora ele mostra "sol o dia todo" ou "sem sol hoje" e a data do próximo nascer, mesmo que seja daqui a semanas
+- Longe do fuso de Fortaleza (Japão, norte da Europa no verão), o dia passa da meia-noite no horário de Fortaleza e a barra de hora ficava com o começo depois do fim. Nesses lugares ela agora cobre o dia inteiro
+- "Copiar link" no meio de uma animação do mapa copiava a câmera de antes do movimento
+- Releases e deploys: uma versão podia ficar sem release quando três versões eram enviadas em sequência rápida, e um push podia interromper um deploy em andamento
+
+### Removido
+
+- O subtítulo do painel, que quebrava em duas linhas no computador desde a chegada do botão "Copiar link"
+
 ## [1.3.0] - 2026-10-03
 
 ### Adicionado

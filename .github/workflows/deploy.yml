@@ -9,9 +9,11 @@ on:
 permissions:
   contents: read
 
+# one deployment at a time; newer pushes wait, and the one in progress is never interrupted
+# (GitHub's recommendation for Pages: a cancelled deployment can be left half done)
 concurrency:
   group: pages-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   build:

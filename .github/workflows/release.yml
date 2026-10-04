@@ -20,10 +20,6 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: release
-  cancel-in-progress: false
-
 jobs:
   plan:
     runs-on: ubuntu-latest
@@ -56,6 +52,11 @@ jobs:
   release:
     needs: plan
     if: needs.plan.outputs.mode != 'none'
+    # One group per version: releases of different versions never wait for (or, while pending,
+    # get cancelled by) each other, and two runs for the same version take turns
+    concurrency:
+      group: release-${{ needs.plan.outputs.tag }}
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     permissions:
       contents: write # create the release and upload its assets
@@ -92,7 +93,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           files=("sombra-guide-$TAG.tar.gz" "sombra-guide-$TAG.tar.gz.sigstore")
-          if [ "$MODE" = new ]; then
+          if [ "$MODE" = new ] && gh release view "$TAG" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "$TAG was published by a run for the same version that went first"
+          elif [ "$MODE" = new ]; then
             gh release create "$TAG" "${files[@]}" --target "$GITHUB_SHA" --title "$TAG" --notes-file notes.md -R "$GITHUB_REPOSITORY"
           else
             gh release upload "$TAG" "${files[@]}" --clobber -R "$GITHUB_REPOSITORY"

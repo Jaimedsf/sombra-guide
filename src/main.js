@@ -7,7 +7,7 @@ import extraBuildings from './extra-buildings.json';
 import { getPosition, getTimes } from 'suncalc';
 import { localNow, toUtc, toLocalMin, fmtMin, fmtDate, dayOfYear, daysInYear, fromDayOfYear } from './time.js';
 import { advance, createPlayer } from './play.js';
-import { daylight, nextSunrise } from './sun.js';
+import { daylight, nextSunrise, sunPath } from './sun.js';
 import { parseMoment, momentSearch } from './url.js';
 import { findAddress, suggestAddress, resolveSuggestion, latestOnly } from './search.js';
 import { shareLink } from './share.js';
@@ -106,13 +106,17 @@ const city = createCityLayer(map, {
   extra: extraBuildings.features,
   ...(PHONE && { radius: 700, shadowMapSize: 2048 }), // ~0.7 m shadow texel (desktop ~0.6 m), ~1/3 of the geometry
 });
-map.on('load', () => {
+function setupLayers() {
   if (map.getLayer('building-3d')) map.removeLayer('building-3d');
   // keep the flat 'building' layer but invisible: MapLibre only keeps a source layer's
   // features in new tiles while some style layer uses it, and city3d reads them from there
   if (map.getLayer('building')) map.setPaintProperty('building', 'fill-opacity', 0);
-  map.addLayer(city);
-});
+  if (!map.getLayer(city.id)) map.addLayer(city);
+}
+map.on('load', setupLayers);
+// a lost WebGL context (common on phones after switching apps) comes back with the style
+// but without custom layers: add the buildings again once the restored style is in
+map.on('webglcontextrestored', () => map.once('style.load', setupLayers));
 
 // ---------- sun ----------
 const clamp01 = (v) => Math.min(1, Math.max(0, v));
@@ -134,27 +138,20 @@ const skyXY = (azDeg, altDeg, bearing) => {
   const r = (50 * (90 - Math.max(altDeg, 0))) / 90;
   return [r * Math.sin(a), -r * Math.cos(a)];
 };
-// today's sun path as [azimuth, altitude] every 10 minutes from sunrise to sunset. It only
-// changes with the date and the place, so frames of a day animation or a rotation reuse it.
+// today's sun path only changes with the date and the place, so frames of a day animation
+// or a rotation reuse it
 let skyPath = { key: '', points: [] };
-function sunPath(times, lat, lng) {
+function todaysPath(lat, lng) {
   const key = `${fmtDate(state)} ${lat.toFixed(3)} ${lng.toFixed(3)}`; // 0.001° ~ 110 m
-  if (key !== skyPath.key) {
-    const rise = toLocalMin(times.sunrise), set = toLocalMin(times.sunset), points = [];
-    for (let m = rise; m <= set; m += 10) {
-      const p = getPosition(toUtc(state.y, state.m, state.d, m), lat, lng);
-      points.push([p.azimuth, p.altitude]);
-    }
-    skyPath = { key, points };
-  }
+  if (key !== skyPath.key) skyPath = { key, points: sunPath(state.y, state.m, state.d, lat, lng) };
   return skyPath.points;
 }
 
-function drawCompass(pos, times, [lng, lat]) {
+function drawCompass(pos, [lng, lat]) {
   const b = map.getBearing();
   const svg = $('compass');
   let h = `<circle r="50" class="dome"/><circle r="25" class="ring"/>`;
-  const path = sunPath(times, lat, lng).map(([az, alt]) => skyXY(az, alt, b).map((v) => v.toFixed(1)).join(','));
+  const path = todaysPath(lat, lng).map(([az, alt]) => skyXY(az, alt, b).map((v) => v.toFixed(1)).join(','));
   h += `<polyline points="${path.join(' ')}" class="path"/>`;
   ['N', 'L', 'S', 'O'].forEach((t, i) => {
     const a = ((i * 90 - b) * Math.PI) / 180;
@@ -173,12 +170,15 @@ function drawCompass(pos, times, [lng, lat]) {
 }
 
 // ---------- UI ----------
-// the hour slider only spans daylight for the chosen date (and map center)
+// the hour slider only spans daylight for the chosen date (and map center), or the whole day
+// when daylight isn't one span of it: polar day or night, or a place far from Fortaleza's
+// time zone whose day runs past midnight in Fortaleza's clock
 let dayRange = [0, 1439];
 function render() {
   const { lng, lat } = map.getCenter();
   const times = getTimes(toUtc(state.y, state.m, state.d, 720), lat, lng);
-  dayRange = daylight(state.y, state.m, state.d, lat, lng);
+  const light = daylight(state.y, state.m, state.d, lat, lng);
+  dayRange = light ?? [0, 1439];
   // live mode keeps the real clock, even at night; simulated moments stay within daylight
   if (!state.live) state.min = Math.min(dayRange[1], Math.max(dayRange[0], state.min));
   const date = toUtc(state.y, state.m, state.d, state.min);
@@ -195,8 +195,12 @@ function render() {
     // official sunrise/sunset is when the sun's upper edge touches the horizon (~ -0.83°)
     : pos.altitude > -1 ? `Sol no horizonte · ${state.min < 720 ? 'nascendo' : 'se pondo'} no ${dirName(pos.azimuth)}`
       : pos.altitude > -6 ? 'Crepúsculo · sol abaixo do horizonte' : 'Noite · sem sol';
-  $('f-rise').textContent = fmtMin(dayRange[0]); // same rounding as the slider ends
-  $('f-set').textContent = fmtMin(dayRange[1]);
+  // same rounding as the slider ends; "—" when the sun doesn't rise or set at all today
+  const riseText = times.sunrise ? fmtMin(light ? light[0] : Math.ceil(toLocalMin(times.sunrise))) : '—';
+  const setText = times.sunset ? fmtMin(light ? light[1] : Math.floor(toLocalMin(times.sunset))) : '—';
+  const allDay = !times.sunrise && (noon.altitude > 0 ? 'sol o dia todo' : 'sem sol hoje');
+  $('f-rise').textContent = riseText;
+  $('f-set').textContent = setText;
   $('f-noon').textContent = fmtMin(toLocalMin(times.solarNoon));
   $('f-noonalt').textContent = `${noon.altitude.toFixed(0)}° · ${dirName(noon.azimuth)}`;
 
@@ -209,19 +213,22 @@ function render() {
     $('shadow-note').textContent = 'Sol rente ao horizonte: as sombras ficam longas demais para medir.';
   } else {
     const next = nextSunrise(state, lat, lng);
-    $('shadow-note').textContent = `Sem sombra do sol agora. Próximo nascer: ${next.tomorrow ? 'amanhã, ' : ''}${fmtMin(next.min)}.`;
+    const when = !next ? '' : next.days === 0 ? '' : next.days === 1 ? 'amanhã, ' : `${next.d} ${MONTHS[next.m - 1]}, `;
+    $('shadow-note').textContent = next
+      ? `Sem sombra do sol agora. Próximo nascer: ${when}${fmtMin(next.min)}.`
+      : 'Sem sombra do sol agora, e o sol não nasce aqui no próximo ano.';
   }
 
-  // the slider only spans daylight; at night (live mode only) it is dimmed and says so
-  const night = state.min < dayRange[0] || state.min > dayRange[1];
+  // the slider spans daylight; at night (live mode only) it is dimmed and says so
+  const night = !!light && (state.min < light[0] || state.min > light[1]);
   $('time').min = dayRange[0];
   $('time').max = dayRange[1];
   $('time').value = Math.floor(state.min);
   $('time').classList.toggle('night', night);
   $('time').setAttribute('aria-valuetext', night ? `${fmtMin(state.min)}, noite` : fmtMin(state.min));
-  $('t-rise').textContent = `nascer ${fmtMin(dayRange[0])}`;
+  $('t-rise').textContent = allDay || `nascer ${riseText}`;
   $('t-night').textContent = night ? 'agora é noite' : '';
-  $('t-set').textContent = `pôr ${fmtMin(dayRange[1])}`;
+  $('t-set').textContent = allDay ? '' : `pôr ${setText}`;
   $('doy').max = daysInYear(state.y) - 1; // before value, or 31 Dec of a leap year gets clamped
   $('doy').value = dayOfYear(state);
   $('doy').setAttribute('aria-valuetext', `${state.d} de ${MONTH_NAMES[state.m - 1]} de ${state.y}`);
@@ -230,7 +237,7 @@ function render() {
   $('play-year').setAttribute('aria-pressed', state.playing === 'year');
   $('play-day').textContent = state.playing === 'day' ? '❚❚ Dia' : '▶ Dia';
   $('play-year').textContent = state.playing === 'year' ? '❚❚ Ano' : '▶ Ano';
-  drawCompass(pos, times, [lng, lat]);
+  drawCompass(pos, [lng, lat]);
   syncUrlSoon();
 }
 
@@ -253,9 +260,17 @@ const canShare = PHONE && typeof navigator.share === 'function';
 const SHARE_LABEL = canShare ? 'Compartilhar' : 'Copiar link';
 let shareTimer = 0;
 $('share').textContent = SHARE_LABEL;
+// the camera as MapLibre writes it to the URL (#zoom/lat/lng/bearing/pitch), which it only does
+// a moment after the map stops
+const cameraHash = () => {
+  const { lng, lat } = map.getCenter();
+  return `#${+map.getZoom().toFixed(2)}/${+lat.toFixed(6)}/${+lng.toFixed(6)}/${+map.getBearing().toFixed(1)}/${Math.round(map.getPitch())}`;
+};
 $('share').addEventListener('click', async () => {
-  syncUrl(); // don't wait for the debounce
-  const result = await shareLink(location.href, {
+  clearTimeout(urlTimer); // write the moment and the camera now, not after the debounce
+  const url = location.origin + location.pathname + momentSearch(location.search, state) + cameraHash();
+  history.replaceState(history.state, '', url);
+  const result = await shareLink(url, {
     share: canShare ? (data) => navigator.share(data) : null,
     copy: (text) => navigator.clipboard.writeText(text),
   });
