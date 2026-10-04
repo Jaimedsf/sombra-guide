@@ -3,6 +3,13 @@
 // results are always the same.
 import { test, expect } from '@playwright/test';
 
+// requests the tests answer or block, anchored to their host
+const ESRI = /^https:\/\/geocode\.arcgis\.com\//;
+const ESRI_SUGGEST = /^https:\/\/geocode\.arcgis\.com\/arcgis\/rest\/services\/World\/GeocodeServer\/suggest\?/;
+const ESRI_FIND = /^https:\/\/geocode\.arcgis\.com\/arcgis\/rest\/services\/World\/GeocodeServer\/findAddressCandidates\?/;
+const NOMINATIM = /^https:\/\/nominatim\.openstreetmap\.org\//;
+const MAP_STYLE = /^https:\/\/tiles\.openfreemap\.org\/styles\//;
+
 const FORTALEZA = '?data=2026-12-21&hora=16:30#16.6/-3.7262/-38.4965/-25/60';
 const SVALBARD_JUNE = '?data=2026-06-21&hora=12:00#14/78.22/15.65/0/40';
 const SVALBARD_DECEMBER = '?data=2026-12-21&hora=12:00#14/78.22/15.65/0/40';
@@ -40,10 +47,10 @@ test('keeps working where the sun never sets or never rises', async ({ page }) =
 });
 
 test('suggests addresses while typing and pins the chosen one', async ({ page }) => {
-  await page.route(/GeocodeServer\/suggest/, (r) => r.fulfill({ json: { suggestions: [
+  await page.route(ESRI_SUGGEST, (r) => r.fulfill({ json: { suggestions: [
     { text: 'Rua Silva Paulet 40, Meireles, Fortaleza, Ceará, 60120-020, BRA', magicKey: 'k1', isCollection: false },
   ] } }));
-  await page.route(/GeocodeServer\/findAddressCandidates/, (r) => r.fulfill({ json: { candidates: [
+  await page.route(ESRI_FIND, (r) => r.fulfill({ json: { candidates: [
     { address: 'Rua Silva Paulet 40, Meireles, Fortaleza, Ceará, 60120-020', location: { x: -38.5026, y: -3.7254 }, score: 100, attributes: { Addr_type: 'StreetAddress' } },
   ] } }));
   await page.goto(FORTALEZA);
@@ -57,8 +64,8 @@ test('suggests addresses while typing and pins the chosen one', async ({ page })
 });
 
 test('falls back to Nominatim when Esri fails', async ({ page }) => {
-  await page.route(/geocode\.arcgis\.com/, (r) => r.fulfill({ status: 503, body: '' }));
-  await page.route(/nominatim\.openstreetmap\.org/, (r) => r.fulfill({ json: [
+  await page.route(ESRI, (r) => r.fulfill({ status: 503, body: '' }));
+  await page.route(NOMINATIM, (r) => r.fulfill({ json: [
     { lon: '-38.5267', lat: '-3.7275', display_name: 'Praça do Ferreira, Centro, Fortaleza, Região Metropolitana de Fortaleza, Ceará, Brasil', addresstype: 'square' },
   ] }));
   await page.goto(FORTALEZA);
@@ -79,7 +86,7 @@ test('copies a link with the moment and the camera', async ({ page }) => {
 });
 
 test('says so when the map server is down, and the panel still works', async ({ page }) => {
-  await page.route(/tiles\.openfreemap\.org\/styles/, (r) => r.abort());
+  await page.route(MAP_STYLE, (r) => r.abort());
   await page.goto(FORTALEZA);
   await expect(page.locator('.map-error')).toContainText('O mapa não carregou');
   await expect(page.locator('.map-error button')).toHaveText('Tentar de novo');
