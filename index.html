@@ -47,10 +47,11 @@
     <!-- the results float over the panel below the field instead of pushing it down -->
     <div class="search-box">
       <form class="search" id="search" role="search">
-        <input type="search" id="q" placeholder="Digite um endereço em Fortaleza" autocomplete="off" enterkeyhint="search" aria-label="Endereço">
+        <input type="search" id="q" placeholder="Digite um endereço em Fortaleza" autocomplete="off" enterkeyhint="search" aria-label="Endereço" aria-describedby="search-status">
         <button class="btn" type="submit">Buscar</button>
       </form>
-      <ul class="results" id="results" hidden></ul>
+      <ul class="results" id="results" aria-label="Resultados da busca" hidden></ul>
+      <p class="sr-only" id="search-status" role="status"></p>
     </div>
 
     <section class="readout">
@@ -59,6 +60,7 @@
         <div class="clock"><span id="clk">--:--</span><span id="mode" class="mode"></span></div>
         <div id="date-label" class="date-label"></div>
         <div id="sun-line" class="sun-line"></div>
+        <p id="tz-note" class="tz-note" hidden>Horários no fuso de Fortaleza (UTC−3)</p>
       </div>
     </section>
 

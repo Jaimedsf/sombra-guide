@@ -5,7 +5,7 @@ import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 import { createCityLayer } from './city3d.js';
 import extraBuildings from './extra-buildings.json';
 import { getPosition, getTimes } from 'suncalc';
-import { localNow, toUtc, toLocalMin, fmtMin, fmtDate, dayOfYear, daysInYear, fromDayOfYear } from './time.js';
+import { localNow, toUtc, toLocalMin, fmtMin, fmtDate, dayOfYear, daysInYear, fromDayOfYear, usesFortalezaTime } from './time.js';
 import { advance, createPlayer } from './play.js';
 import { daylight, nextSunrise, sunPath } from './sun.js';
 import { parseMoment, momentSearch } from './url.js';
@@ -117,6 +117,14 @@ map.on('load', setupLayers);
 // a lost WebGL context (common on phones after switching apps) comes back with the style
 // but without custom layers: add the buildings again once the restored style is in
 map.on('webglcontextrestored', () => map.once('style.load', setupLayers));
+// the style asks for a few icons its sprite lacks (e.g. "office"): an empty one each stops
+// MapLibre from warning about them on every load
+map.on('styleimagemissing', ({ id }) => {
+  if (!map.hasImage(id)) map.addImage(id, { width: 1, height: 1, data: new Uint8Array(4) });
+});
+// the end-to-end tests (npm run test:e2e) build with --mode e2e to reach the map; production
+// builds drop this line
+if (import.meta.env.MODE === 'e2e') window.__sombra = { map };
 
 // ---------- sun ----------
 const clamp01 = (v) => Math.min(1, Math.max(0, v));
@@ -190,6 +198,7 @@ function render() {
   $('mode').textContent = state.live ? 'agora' : state.playing ? 'animando' : 'simulação';
   $('mode').dataset.live = state.live;
   $('date-label').textContent = `${state.d} ${MONTHS[state.m - 1]} ${state.y}`;
+  $('tz-note').hidden = usesFortalezaTime(lng, lat);
   $('sun-line').textContent = pos.altitude > 0
     ? `Sol a ${pos.altitude.toFixed(0)}° de altura, no ${dirName(pos.azimuth)} (${pos.azimuth.toFixed(0)}°)`
     // official sunrise/sunset is when the sun's upper edge touches the horizon (~ -0.83°)
@@ -312,12 +321,16 @@ function openList() {
   list.style.setProperty('--room', `${Math.max(120, room)}px`);
 }
 const msgItem = (text) => Object.assign(document.createElement('li'), { className: 'msg', textContent: text });
+// screen readers hear what the list now holds (a hidden live region)
+const announce = (text) => { $('search-status').textContent = text; };
 function showMessage(text) {
   openList();
   list.replaceChildren(msgItem(text));
+  announce(text);
 }
 function showResults(items, pick, note) {
   openList();
+  announce(`${items.length} ${items.length === 1 ? 'resultado' : 'resultados'}. Use a seta para baixo para escolher.`);
   list.replaceChildren(...(note ? [msgItem(note)] : []), ...items.map((r) => {
     const b = Object.assign(document.createElement('button'), { type: 'button', textContent: r.label });
     if (r.precision) b.append(Object.assign(document.createElement('span'), { className: 'precision', textContent: r.precision }));
@@ -331,6 +344,7 @@ function closeResults() {
   clearTimeout(typing);
   latest.cancel();
   list.hidden = true;
+  announce('');
 }
 
 // the pin says which address it is (tap it to see again) and can be removed
@@ -374,7 +388,7 @@ $('q').addEventListener('input', () => {
       return; // stay quiet while typing; a submitted search reports errors
     }
     if (found?.length) showResults(found, pickSuggestion);
-    else if (found) list.hidden = true;
+    else if (found) { list.hidden = true; announce(''); }
   }, TYPE_PAUSE_MS);
 });
 

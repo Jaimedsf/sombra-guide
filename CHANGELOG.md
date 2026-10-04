@@ -4,6 +4,23 @@ Todas as mudanças relevantes do projeto. O formato segue o [Keep a Changelog](h
 
 Cada versão tem uma tag `vX.Y.Z` no git e uma página em [Releases](https://github.com/Jaimedsf/sombra-guide/releases). Vulnerabilidades corrigidas, quando houver, aparecem numa seção **Segurança** da versão, com o identificador CVE ou GHSA.
 
+## [Não lançado]
+
+### Adicionado
+
+- Aviso "Horários no fuso de Fortaleza (UTC−3)" quando o mapa está num lugar com outro fuso, como Manaus, Acre, Fernando de Noronha ou o exterior
+- A busca avisa os leitores de tela quantos resultados apareceram
+- Testes de ponta a ponta no Chrome (Playwright), que rodam no CI antes de cada deploy: momento pela URL, lugares polares, busca com sugestões e com o Nominatim, link copiado, mapa fora do ar, falta de WebGL 2, perda do contexto gráfico, painel recolhido e layout de celular
+
+### Alterado
+
+- As torres de `src/extra-buildings.json` deixam de ser desenhadas quando o OSM passa a ter um prédio no mesmo lugar, para não aparecerem duas vezes
+
+### Corrigido
+
+- Se o contexto gráfico era perdido com uma reconstrução dos prédios agendada, aparecia um erro no console. A camada já voltava, mas agora a reconstrução espera o contexto voltar
+- O console não acusa mais os ícones que faltam no estilo do mapa (por exemplo, "office")
+
 ## [1.3.1] - 2026-10-03
 
 ### Corrigido

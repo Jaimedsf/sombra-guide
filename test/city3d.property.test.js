@@ -3,7 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fc from 'fast-check';
-import { buildingGeometry } from '../src/city3d.js';
+import { buildingGeometry, unmapped } from '../src/city3d.js';
 
 const meters = (x, y) => [x, y]; // footprints below are already in local meters
 const RADIUS = 1200;
@@ -93,4 +93,30 @@ test('outlines marked hide_3d, empty heights and far buildings draw nothing', ()
   none(feature([ring(r)], { render_height: 5, render_min_height: 5 }));
   none(feature([ring({ ...r, cx: RADIUS + 50 })]));
   assert.ok(buildingGeometry([feature([ring(r)], { render_height: 0 })], meters, RADIUS).pos.length > 0, 'no height = default 3 m');
+});
+
+// extra-buildings.json: towers drawn by hand until OSM has them
+const tower = (r) => feature([ring(r)]);
+
+test('an extra building stays while OSM has nothing there', () => {
+  fc.assert(fc.property(rect, rect, (a, b) => {
+    fc.pre(Math.hypot(a.cx - b.cx, a.cy - b.cy) > 200); // b is far from a
+    assert.equal(unmapped([tower(a)], [tower(b)]).length, 1);
+  }));
+});
+
+test('an extra building is dropped once an OSM building covers it', () => {
+  fc.assert(fc.property(rect, (a) => {
+    const osm = feature([ring({ ...a, w: a.w * 1.2, h: a.h * 1.2 })]); // the same tower, traced a bit larger
+    assert.equal(unmapped([tower(a)], [osm]).length, 0);
+    const multi = { properties: {}, geometry: { type: 'MultiPolygon', coordinates: [[ring({ ...a, cx: a.cx + 500 })], [ring(a)]] } };
+    assert.equal(unmapped([tower(a)], [multi]).length, 0, 'also inside a MultiPolygon');
+  }));
+});
+
+test('an extra building in the courtyard of an OSM building stays', () => {
+  fc.assert(fc.property(rect, (a) => {
+    const block = feature([ring({ ...a, w: a.w * 6, h: a.h * 6 }), ring({ ...a, w: a.w * 3, h: a.h * 3, cw: !a.cw })]);
+    assert.equal(unmapped([tower(a)], [block]).length, 1);
+  }));
 });

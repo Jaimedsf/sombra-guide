@@ -21,11 +21,12 @@ Issues e PRs recebem uma primeira resposta em até 14 dias.
 3. Antes do PR, rode os testes e o build:
    ```sh
    npm test
+   npm run test:e2e   # precisa do Google Chrome instalado
    npm run build
    ```
 4. Abra o PR contra a `main` descrevendo o que muda e por quê.
 
-O CI roda `npm audit`, os testes, o build e o CodeQL em todo PR. O merge só acontece com tudo verde e depois de uma revisão.
+O CI roda `npm audit`, os testes (inclusive os de ponta a ponta no Chrome), o build e o CodeQL em todo PR. O merge só acontece com tudo verde e depois de uma revisão.
 
 ## Versões e releases
 
@@ -39,7 +40,7 @@ Se a versão do `package.json` já tiver tag, o workflow não faz nada. Se a se�
 
 ## Política de testes
 
-- **Toda funcionalidade nova, ou mudança de comportamento, precisa vir com testes automatizados** em `test/` (ou em `check.mjs`), e esses testes precisam passar no `npm test`.
+- **Toda funcionalidade nova, ou mudança de comportamento, precisa vir com testes automatizados** em `test/` (ou em `check.mjs`), e esses testes precisam passar no `npm test`. O que só se vê no navegador (painel, busca, mapa) vai em `e2e/`, com Playwright, e roda com `npm run test:e2e`.
 - Para cálculos (horário, posição do sol, geometria), prefira testes de propriedade com [fast-check](https://fast-check.dev), que verificam uma regra em milhares de entradas sorteadas.
 - Correções de bug devem vir com um teste que falha sem a correção.
 - Mudanças só visuais (CSS, texto) podem vir sem teste automatizado, mas o PR deve mostrar uma captura de tela.

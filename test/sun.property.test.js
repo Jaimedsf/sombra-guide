@@ -4,7 +4,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fc from 'fast-check';
 import { getPosition, getTimes } from 'suncalc';
-import { toUtc, toLocalMin } from '../src/time.js';
+import { toUtc, toLocalMin, usesFortalezaTime } from '../src/time.js';
 import { daylight, nextSunrise, sunPath } from '../src/sun.js';
 
 const LAT = -3.7262, LNG = -38.4965; // Fortaleza (Meireles)
@@ -114,4 +114,13 @@ test('Svalbard: midnight sun in June, polar night in December', () => {
   assert.deepEqual(sunPath(2026, 12, 21, lat, lng), []);
   const next = nextSunrise({ y: 2026, m: 12, d: 21, min: 720 }, lat, lng);
   assert.ok(next.days > 30 && next.days < 90 && next.y === 2027 && next.m === 2, JSON.stringify(next));
+});
+
+test('the time zone notice shows outside the UTC-3 part of Brazil only', () => {
+  const sameClock = { Fortaleza: [-38.50, -3.73], Natal: [-35.21, -5.79], Recife: [-34.88, -8.05], Belém: [-48.49, -1.46],
+    Brasília: [-47.88, -15.79], 'São Paulo': [-46.63, -23.55], 'Porto Alegre': [-51.23, -30.03], Macapá: [-51.07, 0.03] };
+  const otherClock = { Manaus: [-60.02, -3.12], Cuiabá: [-56.10, -15.60], 'Rio Branco': [-67.81, -9.97],
+    'Fernando de Noronha': [-32.42, -3.85], Lisboa: [-9.14, 38.72], Tóquio: [139.76, 35.68] };
+  for (const [name, [lng, lat]] of Object.entries(sameClock)) assert.ok(usesFortalezaTime(lng, lat), name);
+  for (const [name, [lng, lat]] of Object.entries(otherClock)) assert.ok(!usesFortalezaTime(lng, lat), name);
 });

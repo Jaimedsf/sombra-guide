@@ -1,6 +1,13 @@
 // Fortaleza has no DST: local time is always UTC-3.
 export const UTC_OFFSET_MIN = -180;
 
+/**
+ * Whether a place keeps Fortaleza's clock, roughly: Brazil from Amapá and Pará down to Rio
+ * Grande do Sul (UTC-3). Elsewhere (Manaus, Acre, Noronha, abroad) the panel still shows
+ * Fortaleza's time and says so. A box is enough: the notice is true wherever it shows.
+ */
+export const usesFortalezaTime = (lng, lat) => lng >= -54 && lng <= -34 && lat >= -34 && lat <= 5;
+
 /** Current Fortaleza date and minute of day. */
 export function localNow() {
   const t = new Date(Date.now() + UTC_OFFSET_MIN * 60000);

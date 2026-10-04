@@ -119,6 +119,9 @@ h1 { margin: 0; font-size: 20px; font-weight: 700; letter-spacing: -0.01em; }
 .mode[data-live="true"] { background: color-mix(in srgb, var(--sun) 22%, transparent); color: var(--sun-deep); }
 .date-label { font-weight: 600; margin-top: 4px; }
 .sun-line { color: var(--muted); font-size: 13px; }
+.tz-note { margin: 2px 0 0; font-size: 11.5px; font-weight: 600; color: var(--sun-deep); }
+/* read by screen readers, not shown */
+.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
 .facts { margin: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
 .facts div { background: var(--chip); border-radius: 8px; padding: 6px 8px; }

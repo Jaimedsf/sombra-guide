@@ -81,6 +81,7 @@ Requer Node.js 20.19+ ou 22.12+ (mínimo do Vite 8).
 npm install
 npm run dev      # http://localhost:5173
 npm test         # checagem rápida + testes de propriedade (fast-check)
+npm run test:e2e # testes de ponta a ponta no Google Chrome instalado (Playwright)
 npm run build    # site estático em dist/
 npm run preview  # serve o dist/ localmente
 ```
@@ -103,6 +104,7 @@ src/extra-buildings.json  prédios que ainda não estão no OSM (GeoJSON com ren
 src/style.css       estilos
 check.mjs           checagem rápida de fuso e posição do sol
 test/               testes de propriedade com fast-check (npm test)
+e2e/                testes de ponta a ponta no Chrome (npm run test:e2e)
 .github/workflows/  deploy automático no GitHub Pages
 ```
 
@@ -140,7 +142,7 @@ Quando o prédio for mapeado no OSM, apague a entrada do arquivo. Se ficar, ele 
 - **Content Security Policy** no site publicado: scripts, estilos e fontes só do próprio site, e conexões só com os tiles do mapa e os dois serviços de busca. Nenhuma requisição vai a terceiros além desses, nem para fontes
 - **Secret scanning** com bloqueio no push: impede subir chaves e tokens por engano
 - **OpenSSF Scorecard**: nota de segurança da cadeia de suprimentos, recalculada toda semana (selo acima)
-- **CI**: cada push e PR roda `npm audit`, os testes (`npm test`, com testes de propriedade em fast-check) e o build antes de publicar
+- **CI**: cada push e PR roda `npm audit`, os testes (`npm test`, com testes de propriedade em fast-check), os testes de ponta a ponta no Chrome (`npm run test:e2e`) e o build antes de publicar
 - Actions fixadas por SHA e token do Actions somente leitura por padrão
 - A `main` não aceita force push nem pode ser apagada
 - Releases automáticas: quando um push na `main` muda a versão do `package.json`, o workflow `release.yml` cria a tag e a release, com as notas tiradas do [CHANGELOG.md](CHANGELOG.md)

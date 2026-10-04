@@ -12,6 +12,31 @@ const D2R = Math.PI / 180;
 const mercX = (lng) => (lng + 180) / 360;
 const mercY = (lat) => (180 - (180 / Math.PI) * Math.log(Math.tan(Math.PI / 4 + (lat * D2R) / 2))) / 360;
 
+const polygonsOf = (g) => (g.type === 'Polygon' ? [g.coordinates] : g.type === 'MultiPolygon' ? g.coordinates : []);
+// ray casting; rings as [[lng, lat], ...]
+function inRing([x, y], ring) {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [xi, yi] = ring[i], [xj, yj] = ring[j];
+    if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+const inPolygon = (p, [outer, ...holes]) => inRing(p, outer) && !holes.some((h) => inRing(p, h));
+
+/**
+ * The `extra` buildings that OSM still lacks: one is dropped once an OSM building covers the
+ * middle of its footprint, so it isn't drawn twice after someone maps it.
+ */
+export function unmapped(extra, osm) {
+  return extra.filter((f) => {
+    const ring = polygonsOf(f.geometry)[0]?.[0]?.slice(0, -1) ?? [];
+    if (!ring.length) return false;
+    const mid = [0, 1].map((k) => ring.reduce((s, p) => s + p[k], 0) / ring.length);
+    return !osm.some((o) => polygonsOf(o.geometry).some((poly) => inPolygon(mid, poly)));
+  });
+}
+
 /**
  * Wall and roof triangles for building footprints (GeoJSON features with render_height and
  * render_min_height), skipping those whose first vertex is more than `radius` meters away.
@@ -101,8 +126,9 @@ export function createCityLayer(map, {
     // buildings; mixing them doubles roofs and casts bogus shadows. `_z` is MapLibre's
     // (internal) tile zoom on each feature.
     const zMax = all.reduce((z, f) => Math.max(z, f._z ?? 0), 0);
+    const osm = all.filter((f) => (f._z ?? 0) === zMax);
     // `extra`: GeoJSON buildings not yet in OSM, drawn the same way
-    const features = all.filter((f) => (f._z ?? 0) === zMax).concat(extra);
+    const features = osm.concat(unmapped(extra, osm));
     const { pos, nrm } = buildingGeometry(features, toLocal, radius);
 
     const geom = new THREE.BufferGeometry();
@@ -117,9 +143,10 @@ export function createCityLayer(map, {
   }
 
   // rebuild shortly after building tiles arrive or the view moves away from the built area
-  let timer = 0, listening = false;
+  let timer = 0, listening = false, lost = false;
   const schedule = () => { clearTimeout(timer); timer = setTimeout(update, 350); };
   function update() {
+    if (lost) return; // no style to read buildings from until the context and the layer are back
     const visible = map.getZoom() >= MIN_ZOOM - 0.5;
     buildings.visible = ground.visible = visible;
     if (!visible) return map.triggerRepaint();
@@ -138,6 +165,7 @@ export function createCityLayer(map, {
     onAdd(_map, gl) {
       origin = null;
       dirty = true;
+      lost = false;
       // antialiasing is MapLibre's choice: it created the context
       renderer = new THREE.WebGLRenderer({ canvas: map.getCanvas(), context: gl });
       renderer.autoClear = false;
@@ -180,6 +208,7 @@ export function createCityLayer(map, {
         map.on('sourcedata', (e) => { if (e.sourceId === sourceId && e.tile) { dirty = true; schedule(); } });
         map.on('moveend', schedule);
         map.on('idle', schedule); // safety net once every tile has settled
+        map.on('webglcontextlost', () => { lost = true; clearTimeout(timer); });
       }
       schedule();
     },
