@@ -17,12 +17,12 @@
   "dependencies": {
     "@fontsource/instrument-sans": "^5.3.0",
     "@fontsource/jetbrains-mono": "^5.3.0",
-    "maplibre-gl": "^6.11.2",
-    "suncalc": "^2.0.2",
-    "three": "^0.186.1"
+    "maplibre-gl": "^6.16.0",
+    "suncalc": "^2.1.1",
+    "three": "^0.187.0"
   },
   "devDependencies": {
-    "@playwright/test": "^1.63.0",
+    "@playwright/test": "^1.64.1",
     "fast-check": "^4.10.2",
     "vite": "^8.3.6"
   },
